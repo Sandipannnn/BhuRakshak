@@ -1,0 +1,62 @@
+# ==========================================
+# BhuRakshak — Git Ignore Configuration
+# ==========================================
+
+# ------------------------------------------
+# Python / Virtual Environment
+# ------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ------------------------------------------
+# Data Files (GeoJSON, Large CSVs, Shapefiles)
+# ------------------------------------------
+# Exclude raw downloaded GIS layers and large generated CSV datasets
+gsi_landslide_inventory_raw.geojson
+gsi_landslide_points_ner.csv
+satellite_timeseries_raw.csv
+ngdr_landslide_data/
+gsi_landslide_shapefile/
+
+# Track smaller processed metadata CSVs or keep them ignored if large
+# Un-comment the line below if master CSV should be ignored on Git:
+# master_landslide_points_ner.csv
+
+# ------------------------------------------
+# Credentials & Environment Variables
+# ------------------------------------------
+.env
+*.pem
+service_account.json
+key.json
+*.key
+
+# ------------------------------------------
+# IDE & System Files
+# ------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
