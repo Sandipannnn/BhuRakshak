@@ -40,14 +40,14 @@ The BhuRakshak pipeline is divided into distinct phases:
 ```text
 BhuRakshak/
 │
-├── 📂 data/                                 # [Local Data - Ignored in Git]
-│   ├── 📂 raw/                              # Raw downloaded spatial inventories
-│   │   ├── landslide/
-│   │   └── satellite/                       # CSVs downloaded from Google Drive
+├── 📂 data/                                 # [Data Directory]
+│   ├── 📂 raw/                              # Spatial inventories & raw satellite profiles
+│   │   ├── 📂 landslide/                    # Landslide coordinate datasets
+│   │   │   ├── coolr_landslide_points_ner.csv
+│   │   │   └── master_landslide_points_ner.csv  # 9,682 deduplicated landslide sites
+│   │   └── 📂 satellite/                       # Time series CSVs downloaded from Google Drive
 │   │
-│   ├── 📂 processed/                        # Merged & processed spatial datasets
-│   │   └── master_landslide_points_ner.csv  # 9,682 deduplicated landslide sites
-│   │
+│   ├── 📂 processed/                        # Aligned & merged feature datasets (for model training)
 │   └── 📂 shapefiles/                       # GIS Shapefile exports
 │
 ├── 📂 src/                                  # [Source Code Modules]
