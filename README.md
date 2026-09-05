@@ -20,10 +20,12 @@ The BhuRakshak pipeline is divided into distinct phases:
    - **Radar Indicators (Sentinel-1):** SAR VV & VH (Surface Roughness & Ground Displacement).
    - *Outputs are generated server-side by Google Earth Engine and saved directly as CSV files in Google Drive (`BhuRakshak_GEE/`).*
 
-3. **Data Preprocessing & Alignment (Next Step)**
-   - Merge GEE CSV batches.
-   - Join with IMD/ERA5 live weather/precipitation data.
-   - Forward/backward fill temporal gaps to create uniform sequences for the AI model.
+3. **Data Preprocessing & Alignment (Completed)**
+   - Merged 194 Sentinel-1 SAR and 194 Sentinel-2 Optical batch CSVs into a unified time-series.
+   - Joined with Open-Meteo Archive API weather/precipitation data (temperature, precipitation, wind, soil moisture).
+   - Forward/backward-filled temporal gaps to create uniform daily sequences per site.
+   - Added `*_days_since_obs` confidence columns so the Transformer can discount stale gap-filled values.
+   - Built label crosswalk linking satellite site IDs to ground-truth landslide records via nearest-coordinate matching.
 
 4. **Transformer AI Model (Upcoming)**
    - PyTorch-based sequence-to-sequence Temporal Transformer model.
@@ -57,10 +59,14 @@ BhuRakshak/
 │   │   ├── merge_landslide_datasets.py      # Master dataset merger & deduplicator
 │   │   └── GEE_export_satelite_timeseries.py# Google Earth Engine batch exporter
 │   │
-│   ├── 📂 preprocessing/                    # [Pending]
-│   ├── 📂 models/                           # [Pending]
-│   └── 📂 api/                              # [Pending]
+│   ├── 📂 preprocessing/                    # Data Alignment & Label Mapping
+│   │   ├── align_timeseries.py              # Merge satellite + weather → daily grid
+│   │   └── build_label_crosswalk.py         # Map satellite site IDs to ground-truth labels
+│   │
+│   ├── 📂 models/                           # [Pending] Temporal Transformer
+│   └── 📂 api/                              # [Pending] Prediction API
 │
+├── 📄 requirements.txt                      # Python dependencies
 └── 📂 web/                                  # [Pending] Interactive GIS Dashboard
 ```
 
@@ -70,7 +76,7 @@ BhuRakshak/
 
 **Step 1: Install Dependencies**
 ```bash
-pip install earthengine-api pandas geopandas requests pyogrio shapely fiona
+pip install -r requirements.txt
 ```
 
 **Step 2: Authenticate Earth Engine**
@@ -93,3 +99,12 @@ python src/data_collection/merge_landslide_datasets.py
 python src/data_collection/GEE_export_satelite_timeseries.py
 ```
 *(Once GEE finishes processing, download the `BhuRakshak_GEE/` folder from your Google Drive and place the CSVs inside `data/raw/satellite/`)*
+
+**Step 4: Run Preprocessing**
+```bash
+# 5. Align satellite + weather into a daily grid
+python src/preprocessing/align_timeseries.py
+
+# 6. Build label crosswalk (ground-truth ↔ satellite site mapping)
+python src/preprocessing/build_label_crosswalk.py
+```

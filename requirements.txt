@@ -1,0 +1,22 @@
+# ==========================================
+# BhuRakshak — Python Dependencies
+# ==========================================
+
+# Core data processing
+pandas>=2.0
+numpy>=1.24
+
+# HTTP requests (API calls, data download)
+requests>=2.31
+
+# Geospatial processing
+geopandas>=0.14
+pyogrio>=0.7
+shapely>=2.0
+fiona>=1.9
+
+# Scientific computing (spatial KDTree for label crosswalk)
+scipy>=1.11
+
+# Google Earth Engine SDK
+earthengine-api>=0.1.380
