@@ -1,25 +1,37 @@
-# BhuRakshak
+# 🌍 BhuRakshak
 
-BhuRakshak is a landslide susceptibility system for Northeast India. It combines Sentinel-1 SAR, Sentinel-2 optical indicators, and landslide inventory labels with a temporal Transformer model.
+> **Landslide Susceptibility System for Northeast India**
 
-## Current Scope
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Google Earth Engine](https://img.shields.io/badge/Earth_Engine-Supported-orange.svg)](https://earthengine.google.com/)
+
+BhuRakshak is an advanced landslide susceptibility system tailored for Northeast India. It synergizes **Sentinel-1 SAR**, **Sentinel-2 optical indicators**, and historical **landslide inventory labels** with a temporal **Transformer model** to evaluate landslide risks based on recent satellite observations.
+
+---
+
+## 🎯 Current Scope
 
 The current trained model predicts **landslide susceptibility**:
 
-> How likely is this location to be historically landslide-prone based on its recent 30-day satellite sequence?
+> _"How likely is this location to be historically landslide-prone based on its recent 30-day satellite sequence?"_
 
-It does not predict whether a landslide will happen in the next few hours. That early-warning task requires dated event records that overlap the satellite observation period and will be added as a separate training workflow when the required schema is available.
+⚠️ **Note:** It does not predict whether a landslide will happen in the next few hours (early-warning). That task requires dated event records overlapping the satellite observation period and will be added as a separate training workflow when the required schema is available.
 
-## Pipeline
+---
 
-1. Collect and merge landslide inventories.
-2. Export Sentinel-1 and Sentinel-2 time series through Google Earth Engine.
-3. Align satellite observations to a daily grid and add observation-staleness features.
-4. Build the labeled susceptibility table.
-5. Train and evaluate the temporal Transformer.
-6. Run local site-level susceptibility predictions.
+## ⚙️ Pipeline Overview
 
-## Repository Layout
+1. **Data Aggregation:** Collect and merge multiple landslide inventories.
+2. **Satellite Export:** Export Sentinel-1 and Sentinel-2 time series via Google Earth Engine.
+3. **Temporal Alignment:** Align satellite observations to a daily grid and engineer observation-staleness features.
+4. **Dataset Construction:** Build the labeled susceptibility table using spatial crosswalks.
+5. **Model Training:** Train and evaluate the temporal Transformer.
+6. **Inference:** Run local site-level susceptibility predictions.
+
+---
+
+## 📂 Repository Layout
 
 ```text
 BhuRakshak/
@@ -32,46 +44,64 @@ BhuRakshak/
 │   ├── models/              # Dataset loader, Transformer, evaluation, inference
 │   └── api/                 # Reserved for the prediction API
 ├── artifacts/               # Local model checkpoints and reports (ignored by Git)
-├── requirements.txt
+├── requirements.txt         # Project dependencies
 └── web/                     # Reserved for the dashboard
 ```
 
-## Setup
+---
 
-Use Python 3.11 or newer in a virtual environment:
+## 🚀 Getting Started
+
+### Prerequisites
+
+Ensure you have **Python 3.11 or newer** installed. It's recommended to use a virtual environment.
+
+### Setup
 
 ```powershell
+# Create and activate virtual environment
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
+
+# Install dependencies
 python -m pip install -r requirements.txt
 ```
 
-## Data Preparation
+---
 
-The following commands use local files. The `--skip-weather` option prevents Open-Meteo API calls and uses satellite features only:
+## 🛠️ Data Preparation
+
+The following commands use local files. 
+> 💡 **Tip:** The `--skip-weather` option prevents Open-Meteo API calls and relies solely on satellite features.
 
 ```powershell
 $python = ".\.venv\Scripts\python.exe"
 
+# 1. Merge datasets
 & $python src/data_collection/merge_landslide_datasets.py
+
+# 2. Align time series
 & $python src/preprocessing/align_timeseries.py --skip-weather
+
+# 3. Build spatial crosswalks
 & $python src/preprocessing/build_label_crosswalk.py --max-distance-m 250
+
+# 4. Generate training dataset
 & $python src/preprocessing/build_training_dataset.py
 ```
 
-Generated files include:
+### Generated Artifacts
+- `data/processed/aligned_dataset.csv`
+- `data/processed/label_crosswalk.csv`
+- `data/processed/training_dataset.csv`
 
-```text
-data/processed/aligned_dataset.csv
-data/processed/label_crosswalk.csv
-data/processed/training_dataset.csv
-```
+_Note: The event-window command is reserved for future early-warning data. Currently, it yields no positive event windows as available dated events predate the satellite time series._
 
-The event-window command is reserved for future dated-event early-warning data. With the current inventories it correctly produces no positive event windows because the available dated events predate the satellite time series.
+---
 
-## Train The Susceptibility Transformer
+## 🧠 Model Training
 
-Training uses one trailing 30-day window per site and splits by site to avoid row-level leakage:
+Training utilizes one trailing 30-day window per site and implements a site-wise split to prevent data leakage:
 
 ```powershell
 & $python src/models/train_susceptibility_transformer.py `
@@ -79,10 +109,13 @@ Training uses one trailing 30-day window per site and splits by site to avoid ro
   --epochs 10 `
   --batch-size 64
 ```
+_Checkpoints and metadata are safely stored in `artifacts/`._
 
-The checkpoint and metadata are written to `artifacts/`.
+---
 
-## Evaluate The Model
+## 📊 Evaluation
+
+To evaluate model performance on the hold-out set:
 
 ```powershell
 & $python src/models/evaluate_susceptibility_transformer.py `
@@ -90,19 +123,21 @@ The checkpoint and metadata are written to `artifacts/`.
   --checkpoint artifacts/susceptibility_transformer.pt
 ```
 
-Current evaluation results:
+### 🏆 Current Performance Metrics
 
-```text
-ROC-AUC:           0.7945
-Precision:         0.9376
-Recall:            0.6014
-F1-score:          0.7328
-Balanced accuracy: 0.7012
-```
+| Metric | Score |
+| :--- | :--- |
+| **ROC-AUC** | 0.7945 |
+| **Precision** | 0.9376 |
+| **Recall** | 0.6014 |
+| **F1-score** | 0.7328 |
+| **Balanced Accuracy**| 0.7012 |
 
-## Run A Prediction
+---
 
-The inference command reads the latest 30-day window for one existing site and returns a probability and risk class:
+## 🔮 Inference
+
+Run predictions for a specific site. The inference command processes the latest 30-day window and returns a probability alongside a risk class.
 
 ```powershell
 & $python src/models/predict_susceptibility.py `
@@ -111,27 +146,30 @@ The inference command reads the latest 30-day window for one existing site and r
   --checkpoint artifacts/susceptibility_transformer.pt
 ```
 
-Risk thresholds are currently:
+### 🚦 Risk Thresholds
 
-```text
-0.00-0.32  Low
-0.33-0.66  Medium
-0.67-1.00  High
-```
+- 🟢 **0.00 - 0.32** : Low
+- 🟡 **0.33 - 0.66** : Medium
+- 🔴 **0.67 - 1.00** : High
 
-## Model Features
+---
 
-The Transformer uses:
+## 🧬 Model Features
 
-- `ndvi`
-- `ndmi`
-- `sar_vv`
-- `sar_vh`
-- Sensor observation-staleness features
-- `lat` and `lon`
+The Transformer relies on the following key features:
 
-Weather features are not included in the current trained checkpoint because the final alignment run used `--skip-weather`.
+* `ndvi` (Normalized Difference Vegetation Index)
+* `ndmi` (Normalized Difference Moisture Index)
+* `sar_vv` & `sar_vh` (Sentinel-1 SAR backscatter)
+* Sensor observation-staleness features
+* `lat` & `lon` (Spatial coordinates)
 
-## Git Notes
+_Weather features are not included in the current trained checkpoint since the final alignment run utilized `--skip-weather`._
 
-Large generated datasets, caches, downloaded catalogs, scratch files, and model artifacts are ignored. Keep source code, configuration, and documentation in Git. Do not commit credentials or Earth Engine service-account keys.
+---
+
+## 📝 Git Workflow Notes
+
+* **Ignore:** Large generated datasets, caches, downloaded catalogs, scratch files, and model artifacts are tracked via `.gitignore`.
+* **Commit:** Source code, configurations, and documentation.
+* ⚠️ **Security:** **Never** commit credentials, environment files, or Earth Engine service-account keys.
