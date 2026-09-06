@@ -60,6 +60,7 @@ data/shapefiles/**/*.cpg
 # ------------------------------------------
 # Model Artifacts (future-proofing)
 # ------------------------------------------
+artifacts/
 *.pt
 *.pth
 *.onnx
@@ -96,6 +97,8 @@ Thumbs.db
 # ------------------------------------------
 # Legacy / NGDR download artifacts
 # ------------------------------------------
+aa.py
+data/raw/landslide/nasa_global_landslide_catalog.csv
 ngdr_landslide_data/
 gsi_landslide_shapefile/
 satellite_timeseries_raw.csv

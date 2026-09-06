@@ -1,110 +1,137 @@
-# ⛰️ BhuRakshak - SIH 2026
+# BhuRakshak
 
-**BhuRakshak** is an AI-powered Early Warning System for landslide prediction, developed for the **Smart India Hackathon (SIH) 2026**. 
-It focuses on the highly vulnerable Northeast region of India, utilizing satellite imagery (Sentinel-1 SAR and Sentinel-2 Optical) and deep learning (Transformer Neural Networks) to predict landslide susceptibility based on real-time environmental precursors.
+BhuRakshak is a landslide susceptibility system for Northeast India. It combines Sentinel-1 SAR, Sentinel-2 optical indicators, and landslide inventory labels with a temporal Transformer model.
 
----
+## Current Scope
 
-## 🏗️ Project Architecture & Pipeline
+The current trained model predicts **landslide susceptibility**:
 
-The BhuRakshak pipeline is divided into distinct phases:
+> How likely is this location to be historically landslide-prone based on its recent 30-day satellite sequence?
 
-1. **Data Collection (Completed)**
-   - **NASA COOLR Inventory:** Extracted 917 landslide coordinate points.
-   - **GSI Landslide Inventory:** Directly queried the open Bharatlas data mirror to extract 10,408 official landslide records across Northeast India.
-   - **Master Dataset:** Merged, filtered, and spatially deduplicated both datasets (100m radius threshold) to yield **9,682 unique historic landslide sites**.
+It does not predict whether a landslide will happen in the next few hours. That early-warning task requires dated event records that overlap the satellite observation period and will be added as a separate training workflow when the required schema is available.
 
-2. **Satellite Extraction via Google Earth Engine (Completed)**
-   - Batch-exported time-series profiles for all 9,682 coordinates over a 5-year window.
-   - **Optical Indicators (Sentinel-2):** NDVI (Vegetation), NDMI (Soil Moisture).
-   - **Radar Indicators (Sentinel-1):** SAR VV & VH (Surface Roughness & Ground Displacement).
-   - *Outputs are generated server-side by Google Earth Engine and saved directly as CSV files in Google Drive (`BhuRakshak_GEE/`).*
+## Pipeline
 
-3. **Data Preprocessing & Alignment (Completed)**
-   - Merged 194 Sentinel-1 SAR and 194 Sentinel-2 Optical batch CSVs into a unified time-series.
-   - Joined with Open-Meteo Archive API weather/precipitation data (temperature, precipitation, wind, soil moisture).
-   - Forward/backward-filled temporal gaps to create uniform daily sequences per site.
-   - Added `*_days_since_obs` confidence columns so the Transformer can discount stale gap-filled values.
-   - Built label crosswalk linking satellite site IDs to ground-truth landslide records via nearest-coordinate matching.
+1. Collect and merge landslide inventories.
+2. Export Sentinel-1 and Sentinel-2 time series through Google Earth Engine.
+3. Align satellite observations to a daily grid and add observation-staleness features.
+4. Build the labeled susceptibility table.
+5. Train and evaluate the temporal Transformer.
+6. Run local site-level susceptibility predictions.
 
-4. **Transformer AI Model (Upcoming)**
-   - PyTorch-based sequence-to-sequence Temporal Transformer model.
-   - Evaluates past `n` days of satellite + weather data to predict the percentage probability of a landslide occurring in the next `t` hours.
-
-5. **Deployment & Dashboard (Upcoming)**
-   - Interactive Web GIS map.
-   - Automated hazard alerts.
-
----
-
-## 📁 Repository Structure
+## Repository Layout
 
 ```text
 BhuRakshak/
-│
-├── 📂 data/                                 # [Data Directory]
-│   ├── 📂 raw/                              # Spatial inventories & raw satellite profiles
-│   │   ├── 📂 landslide/                    # Landslide coordinate datasets
-│   │   │   ├── coolr_landslide_points_ner.csv
-│   │   │   └── master_landslide_points_ner.csv  # 9,682 deduplicated landslide sites
-│   │   └── 📂 satellite/                       # Time series CSVs downloaded from Google Drive
-│   │
-│   ├── 📂 processed/                        # Aligned & merged feature datasets (for model training)
-│   └── 📂 shapefiles/                       # GIS Shapefile exports
-│
-├── 📂 src/                                  # [Source Code Modules]
-│   ├── 📂 data_collection/                  # Data Extraction Scripts
-│   │   ├── Extract_landslide_points.py      # NASA COOLR extractor
-│   │   ├── download_ngdr_landslide.py       # GSI Inventory downloader
-│   │   ├── merge_landslide_datasets.py      # Master dataset merger & deduplicator
-│   │   └── GEE_export_satelite_timeseries.py# Google Earth Engine batch exporter
-│   │
-│   ├── 📂 preprocessing/                    # Data Alignment & Label Mapping
-│   │   ├── align_timeseries.py              # Merge satellite + weather → daily grid
-│   │   └── build_label_crosswalk.py         # Map satellite site IDs to ground-truth labels
-│   │
-│   ├── 📂 models/                           # [Pending] Temporal Transformer
-│   └── 📂 api/                              # [Pending] Prediction API
-│
-├── 📄 requirements.txt                      # Python dependencies
-└── 📂 web/                                  # [Pending] Interactive GIS Dashboard
+├── data/
+│   ├── raw/                 # Inventories, satellite batches, and weather cache
+│   └── processed/           # Generated aligned and labeled tables
+├── src/
+│   ├── data_collection/     # Inventory and Google Earth Engine exporters
+│   ├── preprocessing/       # Alignment, labels, negative sites, windows
+│   ├── models/              # Dataset loader, Transformer, evaluation, inference
+│   └── api/                 # Reserved for the prediction API
+├── artifacts/               # Local model checkpoints and reports (ignored by Git)
+├── requirements.txt
+└── web/                     # Reserved for the dashboard
 ```
 
----
+## Setup
 
-## 🚀 How to Run the Data Collection Pipeline
+Use Python 3.11 or newer in a virtual environment:
 
-**Step 1: Install Dependencies**
-```bash
-pip install -r requirements.txt
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-**Step 2: Authenticate Earth Engine**
-```bash
-earthengine authenticate
+## Data Preparation
+
+The following commands use local files. The `--skip-weather` option prevents Open-Meteo API calls and uses satellite features only:
+
+```powershell
+$python = ".\.venv\Scripts\python.exe"
+
+& $python src/data_collection/merge_landslide_datasets.py
+& $python src/preprocessing/align_timeseries.py --skip-weather
+& $python src/preprocessing/build_label_crosswalk.py --max-distance-m 250
+& $python src/preprocessing/build_training_dataset.py
 ```
 
-**Step 3: Run Extractors**
-```bash
-# 1. Download NASA data
-python src/data_collection/Extract_landslide_points.py
+Generated files include:
 
-# 2. Download GSI data (Northeast filter)
-python src/data_collection/download_ngdr_landslide.py
-
-# 3. Merge & Deduplicate
-python src/data_collection/merge_landslide_datasets.py
-
-# 4. Trigger Google Earth Engine Satellite Extraction to Google Drive
-python src/data_collection/GEE_export_satelite_timeseries.py
+```text
+data/processed/aligned_dataset.csv
+data/processed/label_crosswalk.csv
+data/processed/training_dataset.csv
 ```
-*(Once GEE finishes processing, download the `BhuRakshak_GEE/` folder from your Google Drive and place the CSVs inside `data/raw/satellite/`)*
 
-**Step 4: Run Preprocessing**
-```bash
-# 5. Align satellite + weather into a daily grid
-python src/preprocessing/align_timeseries.py
+The event-window command is reserved for future dated-event early-warning data. With the current inventories it correctly produces no positive event windows because the available dated events predate the satellite time series.
 
-# 6. Build label crosswalk (ground-truth ↔ satellite site mapping)
-python src/preprocessing/build_label_crosswalk.py
+## Train The Susceptibility Transformer
+
+Training uses one trailing 30-day window per site and splits by site to avoid row-level leakage:
+
+```powershell
+& $python src/models/train_susceptibility_transformer.py `
+  --input data/processed/training_dataset.csv `
+  --epochs 10 `
+  --batch-size 64
 ```
+
+The checkpoint and metadata are written to `artifacts/`.
+
+## Evaluate The Model
+
+```powershell
+& $python src/models/evaluate_susceptibility_transformer.py `
+  --input data/processed/training_dataset.csv `
+  --checkpoint artifacts/susceptibility_transformer.pt
+```
+
+Current evaluation results:
+
+```text
+ROC-AUC:           0.7945
+Precision:         0.9376
+Recall:            0.6014
+F1-score:          0.7328
+Balanced accuracy: 0.7012
+```
+
+## Run A Prediction
+
+The inference command reads the latest 30-day window for one existing site and returns a probability and risk class:
+
+```powershell
+& $python src/models/predict_susceptibility.py `
+  --site-id "arunachal pradesh_2652" `
+  --input data/processed/training_dataset.csv `
+  --checkpoint artifacts/susceptibility_transformer.pt
+```
+
+Risk thresholds are currently:
+
+```text
+0.00-0.32  Low
+0.33-0.66  Medium
+0.67-1.00  High
+```
+
+## Model Features
+
+The Transformer uses:
+
+- `ndvi`
+- `ndmi`
+- `sar_vv`
+- `sar_vh`
+- Sensor observation-staleness features
+- `lat` and `lon`
+
+Weather features are not included in the current trained checkpoint because the final alignment run used `--skip-weather`.
+
+## Git Notes
+
+Large generated datasets, caches, downloaded catalogs, scratch files, and model artifacts are ignored. Keep source code, configuration, and documentation in Git. Do not commit credentials or Earth Engine service-account keys.

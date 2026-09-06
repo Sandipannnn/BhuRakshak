@@ -77,24 +77,33 @@ def load_satellite_site_coords() -> pd.DataFrame:
     Dedups WITHIN each file before concatenating so this never holds the
     full multi-million-row satellite tables in memory — we only need one
     representative coordinate per site, not every observation.
-    """
-    csv_paths = sorted(glob.glob(str(RAW_SATELLITE_DIR / "*.csv")))
-    if not csv_paths:
-        raise FileNotFoundError(f"No CSVs found in {RAW_SATELLITE_DIR}")
 
+    Negative sites are tagged with a 'negative_' site_id prefix based on
+    which file pattern they came from (bhurakshak_neg_*), NOT on GEE's own
+    'site' field — the negative export's per-state site counter restarted
+    at 0 in its own GEE session, so it can reuse the same site_id string
+    as an unrelated positive-run coordinate (confirmed: 251 such collisions
+    in this project). Trusting GEE's site field here would silently average
+    together two different real-world locations' coordinates.
+    """
     frames = []
-    for path in csv_paths:
-        try:
-            df = pd.read_csv(path, usecols=lambda c: c.lower().strip() in ("site", "lat", "lon"))
-        except ValueError:
-            continue  # file doesn't have all three columns — skip it
-        df.columns = [c.strip().lower() for c in df.columns]
-        if not {"site", "lat", "lon"}.issubset(df.columns):
-            continue
-        df = df.rename(columns={"site": "site_id"})
-        df["site_id"] = df["site_id"].str.lower()
-        df = df.drop_duplicates(subset="site_id")
-        frames.append(df)
+    for pattern, is_negative in [("bhurakshak_s*_batch*.csv", False),
+                                   ("bhurakshak_neg_s*_batch*.csv", True)]:
+        csv_paths = sorted(glob.glob(str(RAW_SATELLITE_DIR / pattern)))
+        for path in csv_paths:
+            try:
+                df = pd.read_csv(path, usecols=lambda c: c.lower().strip() in ("site", "lat", "lon"))
+            except ValueError:
+                continue  # file doesn't have all three columns — skip it
+            df.columns = [c.strip().lower() for c in df.columns]
+            if not {"site", "lat", "lon"}.issubset(df.columns):
+                continue
+            df = df.rename(columns={"site": "site_id"})
+            df["site_id"] = df["site_id"].str.lower()
+            if is_negative:
+                df["site_id"] = "negative_" + df["site_id"].str.replace(" ", "_")
+            df = df.drop_duplicates(subset="site_id")
+            frames.append(df)
 
     if not frames:
         raise FileNotFoundError(
@@ -125,6 +134,21 @@ def build_crosswalk(max_distance_m: float) -> pd.DataFrame:
 
     tree = cKDTree(np.column_stack([mx, my]))
     dist, idx = tree.query(np.column_stack([sx, sy]), k=1)
+
+    # Prefer a dated event record when one is available within the same
+    # trust radius. The nearest GSI point is often undated and can otherwise
+    # hide a nearby dated COOLR record, leaving the event-window builder with
+    # almost no positive event dates.
+    dated_master = master_df[master_df["date"].notna()]
+    if not dated_master.empty:
+        dated_positions = np.flatnonzero(master_df["date"].notna().to_numpy())
+        dx, dy = latlon_to_xy(dated_master["lat"].values,
+                              dated_master["lon"].values, lat0_rad)
+        dated_tree = cKDTree(np.column_stack([dx, dy]))
+        dated_dist, dated_idx = dated_tree.query(np.column_stack([sx, sy]), k=1)
+        use_dated = dated_dist <= max_distance_m
+        dist[use_dated] = dated_dist[use_dated]
+        idx[use_dated] = dated_positions[dated_idx[use_dated]]
 
     result = sat_coords.copy()
     result["match_distance_m"] = dist

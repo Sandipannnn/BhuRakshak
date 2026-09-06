@@ -43,6 +43,7 @@ Usage
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[2]  # src/preprocessing -> repo root
@@ -71,7 +72,7 @@ def load_inputs():
     return aligned_df, crosswalk_df, negative_meta_df
 
 
-def build_training_dataset(max_distance_m: float) -> pd.DataFrame:
+def build_training_dataset(max_distance_m: float, neg_exclusion_buffer_m: float) -> pd.DataFrame:
     print("[1/4] Loading aligned features, crosswalk, and negative-site metadata...")
     aligned_df, crosswalk_df, negative_meta_df = load_inputs()
     print(f"      aligned_dataset.csv: {len(aligned_df):,} rows, "
@@ -108,20 +109,63 @@ def build_training_dataset(max_distance_m: float) -> pd.DataFrame:
 
     # --- Negative side: label is already known by construction --------------
     print("\n[3/4] Labeling negative sites (label known from generation, no crosswalk needed)...")
-    neg_state_map = negative_meta_df.set_index("site_id")["state"].to_dict()
-    negative_rows["state"] = negative_rows["site_id"].map(neg_state_map)
+    # State is attached by NEAREST COORDINATE, not by site_id string match:
+    # GEE renumbers negative sites with its own per-state counter (e.g.
+    # negative_sites_ner.csv's 'negative_mizoram_00000' comes back from GEE
+    # as 'mizoram_0000' — different zero-padding, so an ID-string join
+    # silently fails for most sites even after re-adding the 'negative_'
+    # prefix). Coordinates are the only reliable link between the two files.
+    if "lat" in negative_rows.columns and "lon" in negative_rows.columns:
+        from scipy.spatial import cKDTree
+        neg_site_coords = negative_rows.groupby("site_id")[["lat", "lon"]].mean()
+
+        EARTH_R = 6371000.0
+        lat0 = np.radians(negative_meta_df["lat"].mean())
+        def _to_xy(lat, lon):
+            return EARTH_R * np.radians(lon) * np.cos(lat0), EARTH_R * np.radians(lat)
+
+        gx, gy = _to_xy(negative_meta_df["lat"].values, negative_meta_df["lon"].values)
+        sx, sy = _to_xy(neg_site_coords["lat"].values, neg_site_coords["lon"].values)
+        tree = cKDTree(np.column_stack([gx, gy]))
+        dist, idx = tree.query(np.column_stack([sx, sy]), k=1)
+
+        state_by_site_id = pd.Series(
+            negative_meta_df["state"].values[idx], index=neg_site_coords.index)
+        negative_rows["state"] = negative_rows["site_id"].map(state_by_site_id)
+
+        far = (dist > 100)  # should be ~0m; a mismatch here means real trouble
+        if far.any():
+            print(f"      [warn] {far.sum()} negative sites matched their generation "
+                  f"metadata at >100m distance — check for a units or precision issue")
+    else:
+        negative_rows["state"] = np.nan
+        print("      [warn] No lat/lon on negative rows — cannot attach state metadata")
+
     negative_rows["ls_type"] = "none"
     negative_rows["trigger"] = "none"
     negative_rows["source"] = "negative_sample"
+
+    # Safety net: build_negative_sites.py's exclusion buffer only checks each
+    # candidate against its OWN state's positive points, so a site sampled
+    # near a state border (or affected by inconsistent state-name casing in
+    # the master CSV) can end up close to a real landslide in a different
+    # state/casing group without the generator ever knowing. The crosswalk
+    # already computed each negative site's true nearest-master distance
+    # regardless of state — use that as the actual source of truth here.
+    neg_crosswalk = crosswalk_df[crosswalk_df["site_id"].isin(negative_rows["site_id"].unique())]
+    too_close = set(neg_crosswalk.loc[neg_crosswalk["match_distance_m"] < neg_exclusion_buffer_m, "site_id"])
+    if too_close:
+        n_before = negative_rows["site_id"].nunique()
+        negative_rows = negative_rows[~negative_rows["site_id"].isin(too_close)]
+        print(f"      [warn] Dropped {len(too_close)} negative sites found within "
+              f"{neg_exclusion_buffer_m:.0f}m of a real landslide (generation-time "
+              f"exclusion check missed these — likely cross-border or state-name "
+              f"casing gaps). {n_before - negative_rows['site_id'].nunique()} of "
+              f"{n_before} negative sites remain.")
     negative_rows["landslide_occurred"] = 0
     negative_rows["event_date"] = pd.NaT
 
     n_neg_total = negative_rows["site_id"].nunique()
-    n_neg_unmapped = negative_rows.loc[negative_rows["state"].isna(), "site_id"].nunique()
-    if n_neg_unmapped:
-        print(f"      [warn] {n_neg_unmapped:,} negative sites in aligned_dataset.csv were not "
-              f"found in negative_sites_ner.csv — check these weren't renamed somewhere "
-              f"in the pipeline")
     print(f"      {n_neg_total:,} negative sites labeled (landslide_occurred=0)")
 
     # --- Combine --------------------------------------------------------------
@@ -139,9 +183,13 @@ def main():
     )
     parser.add_argument("--max-distance-m", type=float, default=250.0,
                         help="Max crosswalk match distance to trust a positive site's label (default: 250m)")
+    parser.add_argument("--neg-exclusion-buffer-m", type=float, default=1500.0,
+                        help="Drop any negative site found within this distance of a real "
+                             "landslide per the crosswalk — catches cross-border/state-casing "
+                             "gaps in build_negative_sites.py's own exclusion check (default: 1500m)")
     args = parser.parse_args()
 
-    final = build_training_dataset(args.max_distance_m)
+    final = build_training_dataset(args.max_distance_m, args.neg_exclusion_buffer_m)
 
     OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     final.to_csv(OUTPUT_CSV, index=False)

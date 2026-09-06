@@ -76,7 +76,7 @@ OPEN_METEO_DAILY_VARS = [
 CLOUD_PCT_THRESHOLD = 30.0
 
 REQUEST_TIMEOUT_S = 20
-REQUEST_PAUSE_S   = 6.0  # polite rate-limit for the free Open-Meteo tier
+REQUEST_PAUSE_S   = 0.25  # polite rate-limit for the free Open-Meteo tier
 
 # Satellite indicator columns that get a companion "days_since_obs" column
 SATELLITE_INDICATOR_COLS = ["ndvi", "ndmi", "sar_vv", "sar_vh"]
@@ -174,22 +174,41 @@ def _pick_best_batches(csv_paths: list[str]) -> list[str]:
 
 
 def load_s1_batches() -> pd.DataFrame:
-    """Load all Sentinel-1 batch CSVs and return a unified DataFrame."""
-    pattern = str(RAW_SATELLITE_DIR / "bhurakshak_s1_batch*.csv")
-    csv_paths = _pick_best_batches(sorted(glob.glob(pattern)))
-    if not csv_paths:
+    """
+    Load all Sentinel-1 batch CSVs (both positive-site and negative-site
+    exports) and return a unified DataFrame.
+
+    Negative sites are tagged with a 'negative_' site_id prefix based on
+    WHICH FILE PATTERN they came from, not on GEE's own 'site' field.
+    This matters: the negative-site export ran as a separate GEE session
+    from the positive export, and its per-state site counter started back
+    at 0 — so e.g. 'West Bengal_0486' from the negative run and
+    'West Bengal_0486' from the positive run can be two totally different
+    real-world coordinates that just happen to share a name. Trusting
+    GEE's site field to distinguish them would silently average together
+    two unrelated locations' satellite readings in the groupby below.
+    """
+    frames = []
+    for pattern, is_negative in [("bhurakshak_s1_batch*.csv", False),
+                                   ("bhurakshak_neg_s1_batch*.csv", True)]:
+        csv_paths = _pick_best_batches(sorted(glob.glob(str(RAW_SATELLITE_DIR / pattern))))
+        for path in csv_paths:
+            df = pd.read_csv(path, usecols=lambda c: c.lower().strip() in
+                             ("site", "date", "sar_vv", "sar_vh", "lat", "lon"))
+            df.columns = [c.strip().lower() for c in df.columns]
+            if "site" in df.columns:
+                df = df.rename(columns={"site": "site_id"})
+            df["site_id"] = df["site_id"].str.lower()  # normalise casing across batches
+            if is_negative:
+                # Tag by source file, not by trusting GEE's own naming —
+                # guarantees no collision with positive-run site_ids
+                # regardless of what GEE happened to call this coordinate.
+                df["site_id"] = "negative_" + df["site_id"].str.replace(" ", "_")
+            frames.append(df)
+
+    if not frames:
         print("      [warn] No S1 CSVs found.")
         return pd.DataFrame(columns=["site_id", "date", "sar_vv", "sar_vh"])
-
-    frames = []
-    for path in csv_paths:
-        df = pd.read_csv(path, usecols=lambda c: c.lower().strip() in
-                         ("site", "date", "sar_vv", "sar_vh", "lat", "lon"))
-        df.columns = [c.strip().lower() for c in df.columns]
-        if "site" in df.columns:
-            df = df.rename(columns={"site": "site_id"})
-        df["site_id"] = df["site_id"].str.lower()  # normalise casing across batches
-        frames.append(df)
 
     merged = pd.concat(frames, ignore_index=True)
     merged["date"] = pd.to_datetime(merged["date"], errors="coerce")
@@ -198,27 +217,39 @@ def load_s1_batches() -> pd.DataFrame:
     # lat/lon ride along as numeric columns and get averaged too — harmless
     # since a given site's coordinates should be constant across rows.
     merged = merged.groupby(["site_id", "date"], as_index=False).mean(numeric_only=True)
-    print(f"      S1: {len(csv_paths)} files -> {len(merged):,} rows")
+    n_files = sum(1 for _ in glob.glob(str(RAW_SATELLITE_DIR / "bhurakshak_s1_batch*.csv"))) + \
+              sum(1 for _ in glob.glob(str(RAW_SATELLITE_DIR / "bhurakshak_neg_s1_batch*.csv")))
+    print(f"      S1: {n_files} files -> {len(merged):,} rows")
     return merged
 
 
 def load_s2_batches() -> pd.DataFrame:
-    """Load all Sentinel-2 batch CSVs, apply cloud filter, return DataFrame."""
-    pattern = str(RAW_SATELLITE_DIR / "bhurakshak_s2_batch*.csv")
-    csv_paths = _pick_best_batches(sorted(glob.glob(pattern)))
-    if not csv_paths:
+    """
+    Load all Sentinel-2 batch CSVs (both positive-site and negative-site
+    exports), apply cloud filter, return DataFrame.
+
+    See load_s1_batches() docstring — negative sites are tagged by source
+    FILE PATTERN, not by GEE's own site naming, since the negative export's
+    per-state counter restarted at 0 and can collide with positive site_ids.
+    """
+    frames = []
+    for pattern, is_negative in [("bhurakshak_s2_batch*.csv", False),
+                                   ("bhurakshak_neg_s2_batch*.csv", True)]:
+        csv_paths = _pick_best_batches(sorted(glob.glob(str(RAW_SATELLITE_DIR / pattern))))
+        for path in csv_paths:
+            df = pd.read_csv(path, usecols=lambda c: c.lower().strip() in
+                             ("site", "date", "ndvi", "ndmi", "cloud_pct", "lat", "lon"))
+            df.columns = [c.strip().lower() for c in df.columns]
+            if "site" in df.columns:
+                df = df.rename(columns={"site": "site_id"})
+            df["site_id"] = df["site_id"].str.lower()  # normalise casing across batches
+            if is_negative:
+                df["site_id"] = "negative_" + df["site_id"].str.replace(" ", "_")
+            frames.append(df)
+
+    if not frames:
         print("      [warn] No S2 CSVs found.")
         return pd.DataFrame(columns=["site_id", "date", "ndvi", "ndmi"])
-
-    frames = []
-    for path in csv_paths:
-        df = pd.read_csv(path, usecols=lambda c: c.lower().strip() in
-                         ("site", "date", "ndvi", "ndmi", "cloud_pct", "lat", "lon"))
-        df.columns = [c.strip().lower() for c in df.columns]
-        if "site" in df.columns:
-            df = df.rename(columns={"site": "site_id"})
-        df["site_id"] = df["site_id"].str.lower()  # normalise casing across batches
-        frames.append(df)
 
     merged = pd.concat(frames, ignore_index=True)
     merged["date"] = pd.to_datetime(merged["date"], errors="coerce")
@@ -235,7 +266,9 @@ def load_s2_batches() -> pd.DataFrame:
 
     # Average overlapping site+date rows
     merged = merged.groupby(["site_id", "date"], as_index=False).mean(numeric_only=True)
-    print(f"      S2: {len(csv_paths)} files -> {len(merged):,} rows "
+    n_files = sum(1 for _ in glob.glob(str(RAW_SATELLITE_DIR / "bhurakshak_s2_batch*.csv"))) + \
+              sum(1 for _ in glob.glob(str(RAW_SATELLITE_DIR / "bhurakshak_neg_s2_batch*.csv")))
+    print(f"      S2: {n_files} files -> {len(merged):,} rows "
           f"({cloud_dropped:,} cloudy rows dropped)")
     return merged
 
@@ -293,6 +326,10 @@ def merge_s1_s2(s1_df: pd.DataFrame, s2_df: pd.DataFrame) -> pd.DataFrame:
 # a single request. Batching turns ~9,685 sequential calls (which reliably
 # hits the free-tier rate limit and starts 429ing) into ~50 batched calls,
 # comfortably under any reasonable limit.
+# Open-Meteo's archive API accepts up to 1000 comma-separated locations in
+# a single request. Batching turns ~9,685 sequential calls (which reliably
+# hits the free-tier rate limit and starts 429ing) into a couple hundred
+# batched calls, comfortably under any reasonable limit.
 WEATHER_BATCH_SIZE = 50
 WEATHER_MAX_RETRIES = 5
 WEATHER_RETRY_BASE_DELAY_S = 3.0
@@ -305,24 +342,29 @@ def _safe_site_id(site_id) -> str:
 
 def _request_with_retry(params: dict, max_retries: int = WEATHER_MAX_RETRIES):
     """
-    GET with exponential backoff. Honors a Retry-After header on 429s if
-    Open-Meteo sends one; otherwise backs off 3s, 6s, 12s, 24s, 48s.
-    Returns the parsed JSON payload, or None if every attempt failed.
+    GET with exponential backoff — but only for errors retrying can actually
+    fix: 429 (rate limit) and 5xx/timeouts (transient server issues).
+    A non-429 4xx means the request itself is malformed or rejected: retrying
+    the identical request just fails the same way 5 times, so we print the
+    response body (to see Open-Meteo's actual reason) and give up immediately
+    — the caller (_fetch_batch) handles this by bisecting the batch rather
+    than by retrying.
+    Returns the parsed JSON payload, or None if unrecoverable / all retries failed.
     """
     for attempt in range(max_retries):
         try:
             resp = requests.get(OPEN_METEO_ARCHIVE_URL, params=params,
                                  timeout=WEATHER_BATCH_TIMEOUT_S)
             if resp.status_code == 429:
-                retry_after = resp.headers.get("Retry-After")
-                wait = float(retry_after) if retry_after else WEATHER_RETRY_BASE_DELAY_S * (2 ** attempt)
-                
-                # Print the exact text from Open-Meteo to know WHICH limit was hit
-                print(f"      [rate-limit] 429 received: {resp.text.strip()}")
-                print(f"      ...waiting {wait:.0f}s (attempt {attempt + 1}/{max_retries})")
-                
-                time.sleep(wait)
-                continue
+                print("      [rate-limit] 429 received; skipping this batch. "
+                    "Cached weather and feature imputation will be used.")
+                return None
+            if 400 <= resp.status_code < 500:
+                # Not rate-limiting — a real rejection. Retrying the SAME
+                # request won't help; print the server's actual reason so
+                # it's visible in the log, then bail immediately.
+                print(f"      [error] {resp.status_code}: {resp.text[:300]}")
+                return None
             resp.raise_for_status()
             return resp.json()
         except (requests.RequestException, ValueError) as exc:
@@ -331,6 +373,54 @@ def _request_with_retry(params: dict, max_retries: int = WEATHER_MAX_RETRIES):
                   f"(attempt {attempt + 1}/{max_retries})")
             time.sleep(wait)
     return None
+
+
+def _fetch_batch(site_ids: list, site_coords: pd.DataFrame,
+                  global_start: str, global_end: str) -> list:
+    """
+    Fetch weather for a batch of sites in one request. On a non-retryable
+    failure (400, or a response with the wrong number of results), bisect
+    the batch and retry each half. This both salvages as much of the batch
+    as possible AND, if the real problem is one bad coordinate, narrows
+    down to exactly that site instead of losing the whole batch around it.
+
+    Returns a list of (site_id, result_dict) tuples for sites that
+    succeeded. Sites that fail all the way down to a batch-of-one are
+    skipped (logged), not silently dropped.
+    """
+    lats = [round(float(site_coords.loc[s, "lat"]), 4) for s in site_ids]
+    lons = [round(float(site_coords.loc[s, "lon"]), 4) for s in site_ids]
+    params = {
+        "latitude": ",".join(map(str, lats)),
+        "longitude": ",".join(map(str, lons)),
+        "start_date": global_start,
+        "end_date": global_end,
+        "daily": ",".join(OPEN_METEO_DAILY_VARS),
+        "timezone": "auto",
+    }
+
+    payload = _request_with_retry(params)
+    if payload is not None:
+        results = payload if isinstance(payload, list) else [payload]
+        if len(results) == len(site_ids):
+            return list(zip(site_ids, results))
+        print(f"      [warn] batch of {len(site_ids)} returned {len(results)} "
+              f"results — bisecting to isolate the mismatch")
+    else:
+        # _request_with_retry already classified this as unrecoverable (most
+        # commonly a 429). Retrying each individual site would amplify the
+        # rate-limit problem and cannot improve the result.
+        return []
+
+    if len(site_ids) == 1:
+        print(f"      [warn] site {site_ids[0]} failed permanently — skipping "
+              f"(lat={lats[0]}, lon={lons[0]})")
+        return []
+
+    mid = len(site_ids) // 2
+    left = _fetch_batch(site_ids[:mid], site_coords, global_start, global_end)
+    right = _fetch_batch(site_ids[mid:], site_coords, global_start, global_end)
+    return left + right
 
 
 def attach_weather(satellite_df: pd.DataFrame) -> pd.DataFrame:
@@ -381,49 +471,28 @@ def attach_weather(satellite_df: pd.DataFrame) -> pd.DataFrame:
 
     fetched_frames = []
     total_batches = (len(to_fetch) + WEATHER_BATCH_SIZE - 1) // WEATHER_BATCH_SIZE
-
     for batch_num, start_idx in enumerate(range(0, len(to_fetch), WEATHER_BATCH_SIZE), start=1):
         batch_sites = to_fetch[start_idx:start_idx + WEATHER_BATCH_SIZE]
-        lats = [round(float(site_coords.loc[s, "lat"]), 4) for s in batch_sites]
-        lons = [round(float(site_coords.loc[s, "lon"]), 4) for s in batch_sites]
-
-        params = {
-            "latitude": ",".join(map(str, lats)),
-            "longitude": ",".join(map(str, lons)),
-            "start_date": global_start,
-            "end_date": global_end,
-            "daily": ",".join(OPEN_METEO_DAILY_VARS),
-            "timezone": "auto",
-        }
-
-        payload = _request_with_retry(params)
-        if payload is None:
-            print(f"      [warn] batch {batch_num}/{total_batches} failed after "
-                  f"{WEATHER_MAX_RETRIES} retries — skipping {len(batch_sites)} sites "
-                  f"(will retry next run, nothing cached for them)")
-            continue
-
-        # Open-Meteo returns a list when multiple locations were requested,
-        # a single dict for one location — normalise to a list either way.
-        results = payload if isinstance(payload, list) else [payload]
-
-        for site_id, result in zip(batch_sites, results):
+        # _fetch_batch bisects rejected responses, so a single invalid or
+        # oversized request cannot discard every otherwise valid site in it.
+        results = _fetch_batch(batch_sites, site_coords, global_start, global_end)
+        for site_id, result in results:
             daily = result.get("daily", {}) if isinstance(result, dict) else {}
             if "time" not in daily:
+                print(f"      [warn] no daily weather returned for {site_id}")
                 continue
             wdf = pd.DataFrame({"date": pd.to_datetime(daily["time"])})
             for var in OPEN_METEO_DAILY_VARS:
-                wdf[var] = daily.get(var, [np.nan] * len(wdf))
+                values = daily.get(var)
+                wdf[var] = values if values is not None else np.nan
 
             cache_path = WEATHER_CACHE_DIR / f"{_safe_site_id(site_id)}_{global_start}_{global_end}.csv"
             wdf.to_csv(cache_path, index=False)
-
-            wdf = wdf.copy()
             wdf["site_id"] = site_id
             fetched_frames.append(wdf)
 
         print(f"      ... batch {batch_num}/{total_batches} done "
-              f"({len(batch_sites)} sites)")
+              f"({len(results)}/{len(batch_sites)} sites)")
         time.sleep(REQUEST_PAUSE_S)
 
     all_frames = cached_frames + fetched_frames
@@ -500,6 +569,16 @@ def fill_gaps(df: pd.DataFrame, progress_every: int = 1000) -> pd.DataFrame:
         filled_frames.append(group.reset_index())
 
     result = pd.concat(filled_frames, ignore_index=True)
+    numeric_cols = result.select_dtypes(include=[np.number]).columns
+    missing_before = int(result[numeric_cols].isna().sum().sum())
+    if missing_before:
+        # Some sites can have no valid reading for one sensor or can miss a
+        # weather batch because the upstream free API is rate-limited. Use
+        # training-safe global medians rather than emitting NaNs to a model.
+        medians = result[numeric_cols].median()
+        result[numeric_cols] = result[numeric_cols].fillna(medians).fillna(0.0)
+        print(f"      [impute] Filled {missing_before:,} remaining numeric gaps "
+              "with global medians (all-NaN columns use 0.0).")
     return result
 
 
@@ -541,8 +620,14 @@ def main():
     )
     parser.add_argument("--skip-weather", action="store_true",
                         help="Skip the Open-Meteo API calls")
+    parser.add_argument("--weather-batch-size", type=int, default=WEATHER_BATCH_SIZE,
+                        help=f"Locations per Open-Meteo request (default: {WEATHER_BATCH_SIZE}). "
+                             "Lower this if you see 400 errors — likely too much data "
+                             "(locations x years x variables) in one request.")
     parser.add_argument("--test-mode", action="store_true",
                         help="Run on synthetic data instead of real files")
+    parser.add_argument("--output", type=Path, default=None,
+                        help="Output CSV path (test mode defaults to aligned_dataset_test.csv)")
     args = parser.parse_args()
 
     # -- Step 1: Site metadata ----------------------------------------------
@@ -579,7 +664,12 @@ def main():
 
     # -- Save ---------------------------------------------------------------
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = PROCESSED_DIR / "aligned_dataset.csv"
+    if args.output is not None:
+        out_path = args.output
+    elif args.test_mode:
+        out_path = PROCESSED_DIR / "aligned_dataset_test.csv"
+    else:
+        out_path = PROCESSED_DIR / "aligned_dataset.csv"
 
     print(f"      Writing {len(aligned):,} rows to CSV in chunks to save memory...")
     aligned.to_csv(out_path, index=False, chunksize=100000)

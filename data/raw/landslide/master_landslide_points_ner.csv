@@ -9685,3 +9685,138 @@ lat,lon,source,state,date,ls_type,trigger,site_id
 24.68314,94.40092,GSI_INVENTORY,Manipur,,Slide,rainfall,point_09682
 24.77733,94.60228,GSI_INVENTORY,Manipur,,Slide,Rainfall,point_09683
 24.77669,94.59947,GSI_INVENTORY,Manipur,,Slide,Rainfall,point_09684
+26.8826,88.2788,NASA_GLC,Bengal,2009-07-22,landslide,downpour,point_09685
+27.478,88.527,NASA_GLC,,2009-07-01,landslide,downpour,point_09686
+27.8385,88.556,NASA_GLC,,2012-09-19,landslide,downpour,point_09687
+27.6558,88.605,NASA_GLC,,2012-09-19,landslide,downpour,point_09688
+27.0605,88.255,NASA_GLC,Bengal,2011-09-25,landslide,downpour,point_09689
+26.87324,88.29184,NASA_GLC,Bengal,2009-07-03,landslide,rain,point_09690
+26.885,88.2778,NASA_GLC,Bengal,2008-06-20,landslide,rain,point_09691
+26.88,88.28,NASA_GLC,Bengal,2011-06-17,mudslide,downpour,point_09692
+26.8073,88.3162,NASA_GLC,Bengal,2010-06-16,landslide,downpour,point_09693
+27.6163,88.6586,NASA_GLC,Sikkim,2015-05-24,landslide,unknown,point_09694
+27.4459,88.6193,NASA_GLC,,2007-04-11,landslide,downpour,point_09695
+22.533,92.899,NASA_GLC,Mizoram,2007-07-30,landslide,downpour,point_09696
+27.1761,88.5287,NASA_GLC,Sikkim,2009-08-20,mudslide,downpour,point_09697
+23.591,92.9296,NASA_GLC,Mizoram,2010-09-13,landslide,downpour,point_09698
+27.3383,88.6069,NASA_GLC,Sikkim,2007-05-23,landslide,rain,point_09699
+27.5161,88.5575,NASA_GLC,,2011-09-30,landslide,unknown,point_09700
+27.0076,88.251,NASA_GLC,West Bengal,2015-06-27,landslide,downpour,point_09701
+22.479,92.967,NASA_GLC,Mizoram,2007-07-30,landslide,downpour,point_09702
+27.2879,88.2579,NASA_GLC,,2011-06-23,landslide,downpour,point_09703
+27.0713,88.4308,NASA_GLC,Bengal,2007-08-25,landslide,rain,point_09704
+27.3702,88.7334,NASA_GLC,Sikkim,2010-09-04,landslide,downpour,point_09705
+26.89,88.47,NASA_GLC,Bengal,2009-06-17,mudslide,downpour,point_09706
+27.0246,88.4385,NASA_GLC,Bengal,2009-08-16,landslide,downpour,point_09707
+26.8905,88.2789,NASA_GLC,Bengal,2007-08-02,mudslide,rain,point_09708
+26.9282,88.4553,NASA_GLC,West Bengal,2015-07-04,landslide,unknown,point_09709
+27.0096,88.2548,NASA_GLC,Bengal,2007-08-29,landslide,rain,point_09710
+26.9435,88.4445,NASA_GLC,Bengal,2010-08-17,landslide,downpour,point_09711
+26.7324,88.4089,NASA_GLC,Bengal,2007-06-13,landslide,rain,point_09712
+26.8861,88.1704,NASA_GLC,West Bengal,2016-10-12,landslide,downpour,point_09713
+27.3341,88.6083,NASA_GLC,Sikkim,2010-04-17,landslide,downpour,point_09714
+27.0765,88.4808,NASA_GLC,Bengal,2010-06-16,landslide,rain,point_09715
+27.1027,88.1218,NASA_GLC,West Bengal,2016-07-26,landslide,downpour,point_09716
+27.3425,88.6236,NASA_GLC,Sikkim,2007-09-10,landslide,rain,point_09717
+26.9974,88.4314,NASA_GLC,West Bengal,2015-06-17,landslide,downpour,point_09718
+23.7327,92.7463,NASA_GLC,Mizoram,2014-07-14,landslide,downpour,point_09719
+27.3721,88.708,NASA_GLC,Sikkim,2013-06-08,landslide,downpour,point_09720
+23.75407,92.74129,NASA_GLC,Mizoram,2010-09-13,landslide,downpour,point_09721
+27.0377,88.3603,NASA_GLC,Sikkim,2012-09-14,landslide,downpour,point_09722
+27.0599,88.4674,NASA_GLC,Bengal,2013-09-16,landslide,downpour,point_09723
+23.3572,92.7878,NASA_GLC,Mizoram,2015-08-26,landslide,continuous_rain,point_09724
+27.2084,88.4909,NASA_GLC,,2007-09-11,debris_flow,rain,point_09725
+26.7914,88.363,NASA_GLC,Bengal,2009-08-16,landslide,downpour,point_09726
+26.9978,88.167,NASA_GLC,West Bengal,2015-07-01,landslide,downpour,point_09727
+27.1141,88.4658,NASA_GLC,Bengal,2011-07-20,landslide,rain,point_09728
+27.3773,88.559,NASA_GLC,Sikkim,2010-07-21,landslide,downpour,point_09729
+23.74183,92.71419,NASA_GLC,Mizoram,2010-09-13,landslide,downpour,point_09730
+27.3765,88.7628,NASA_GLC,Sikkim,2013-06-27,landslide,downpour,point_09731
+26.74452,88.40012,NASA_GLC,Bengal,2009-08-16,landslide,downpour,point_09732
+27.1344,88.4575,NASA_GLC,Bengal,2009-08-20,landslide,downpour,point_09733
+25.4243,88.2746,NASA_GLC,West Bengal,2015-06-30,landslide,downpour,point_09734
+27.2644,88.1365,NASA_GLC,,2009-08-19,landslide,downpour,point_09735
+27.04,88.264,NASA_GLC,Bengal,2009-07-22,landslide,downpour,point_09736
+27.1748,88.6458,NASA_GLC,Sikkim,2012-06-07,landslide,rain,point_09737
+27.059,88.4694,NASA_GLC,West Bengal,2014-07-15,landslide,rain,point_09738
+26.88676,88.28045,NASA_GLC,Bengal,2009-08-16,landslide,downpour,point_09739
+27.167,88.3652,NASA_GLC,Sikkim,2010-08-20,complex,downpour,point_09740
+27.3746,88.7648,NASA_GLC,Sikkim,2009-08-26,landslide,rain,point_09741
+27.5509,88.6475,NASA_GLC,,2010-07-21,landslide,downpour,point_09742
+27.201,88.4883,NASA_GLC,,2007-09-07,landslide,rain,point_09743
+26.99196,88.42281,NASA_GLC,Sikkim,2011-07-17,landslide,rain,point_09744
+27.3736,88.7323,NASA_GLC,Sikkim,2013-09-07,landslide,rain,point_09745
+22.6461,88.3403,NASA_GLC,Bengal,2007-08-31,landslide,rain,point_09746
+27.0736,88.4779,NASA_GLC,Bengal,2009-08-20,landslide,continuous_rain,point_09747
+27.0366,88.263,NASA_GLC,Bengal,2010-08-05,landslide,downpour,point_09748
+27.0257,88.4301,NASA_GLC,West Bengal,2015-06-17,landslide,downpour,point_09749
+27.7565,88.632,NASA_GLC,,2012-06-07,landslide,downpour,point_09750
+27.1499,88.38,NASA_GLC,Sikkim,2007-07-16,mudslide,rain,point_09751
+27.1954,88.6115,NASA_GLC,Sikkim,2009-09-17,landslide,rain,point_09752
+27.0375,88.2627,NASA_GLC,Bengal,2010-08-06,landslide,downpour,point_09753
+27.13862,88.22552,NASA_GLC,,2011-08-23,landslide,downpour,point_09754
+26.9343,88.4486,NASA_GLC,West Bengal,2016-10-15,rock_fall,downpour,point_09755
+26.888,88.2796,NASA_GLC,West Bengal,2016-10-15,landslide,unknown,point_09756
+26.88406,88.28087,NASA_GLC,Bengal,2009-08-20,landslide,continuous_rain,point_09757
+27.3425,88.2426,NASA_GLC,Sikkim,2013-09-01,landslide,downpour,point_09758
+27.1176,88.1069,NASA_GLC,West Bengal,2016-07-20,landslide,downpour,point_09759
+26.8811,88.2779,NASA_GLC,West Bengal,2015-07-01,landslide,downpour,point_09760
+27.1675,88.3651,NASA_GLC,Sikkim,2012-09-16,landslide,downpour,point_09761
+23.7527,92.694,NASA_GLC,Mizoram,2010-09-16,landslide,downpour,point_09762
+27.0638,88.4659,NASA_GLC,Bengal,2011-06-20,landslide,rain,point_09763
+23.7131,92.7362,NASA_GLC,Mizoram,2015-06-19,landslide,rain,point_09764
+23.73479,92.72124,NASA_GLC,Mizoram,2009-10-05,landslide,downpour,point_09765
+27.172,88.5292,NASA_GLC,Sikkim,2016-10-15,landslide,downpour,point_09766
+23.7313,92.7187,NASA_GLC,Mizoram,2015-09-14,landslide,downpour,point_09767
+26.89,88.28,NASA_GLC,Bengal,2008-06-29,landslide,unknown,point_09768
+26.8833,88.2833,NASA_GLC,Bengal,2007-09-07,landslide,rain,point_09769
+27.337,88.609,NASA_GLC,Sikkim,2008-08-28,landslide,downpour,point_09770
+27.322,88.6087,NASA_GLC,Sikkim,2010-04-17,landslide,downpour,point_09771
+27.7167,88.5577,NASA_GLC,,2012-06-03,landslide,downpour,point_09772
+27.0875,88.6556,NASA_GLC,West Bengal,2015-06-30,landslide,downpour,point_09773
+27.05374,88.42572,NASA_GLC,Sikkim,2011-07-19,landslide,rain,point_09774
+22.7176,92.8416,NASA_GLC,Mizoram,2010-09-13,landslide,downpour,point_09775
+27.0816,88.4397,NASA_GLC,Sikkim,2015-07-07,landslide,continuous_rain,point_09776
+23.7281,92.7175,NASA_GLC,Mizoram,2013-05-11,landslide,rain,point_09777
+26.8843,88.1835,NASA_GLC,West Bengal,2015-06-30,landslide,downpour,point_09778
+24.042,92.6724,NASA_GLC,Mizoram,2015-08-27,landslide,downpour,point_09779
+27.4885,88.4451,NASA_GLC,,2011-06-17,mudslide,rain,point_09780
+27.1695,88.3664,NASA_GLC,Sikkim,2016-10-15,landslide,rain,point_09781
+23.5397,93.3783,NASA_GLC,Mizoram,2016-07-28,landslide,continuous_rain,point_09782
+26.9599,88.268,NASA_GLC,Bengal,2009-08-16,landslide,downpour,point_09783
+23.73504,92.71061,NASA_GLC,Mizoram,2010-09-13,landslide,downpour,point_09784
+27.3392,88.6188,NASA_GLC,Sikkim,2010-08-27,landslide,downpour,point_09785
+23.3439,93.0748,NASA_GLC,Mizoram,2010-09-13,landslide,downpour,point_09786
+27.3543,88.6428,NASA_GLC,Sikkim,2010-05-31,landslide,downpour,point_09787
+27.0875,88.4572,NASA_GLC,Bengal,2007-09-20,landslide,rain,point_09788
+23.7348,92.7187,NASA_GLC,Mizoram,2015-09-14,landslide,downpour,point_09789
+26.8781,88.2807,NASA_GLC,West Bengal,2015-07-01,landslide,downpour,point_09790
+23.9304,88.2374,NASA_GLC,Bengal,2007-07-21,landslide,rain,point_09791
+26.8692,88.4695,NASA_GLC,West Bengal,2016-10-12,landslide,downpour,point_09792
+26.8826,88.2806,NASA_GLC,West Bengal,2015-07-07,landslide,continuous_rain,point_09793
+27.2319,88.497,NASA_GLC,,2010-08-26,landslide,downpour,point_09794
+27.2872,88.2816,NASA_GLC,Sikkim,2007-09-18,landslide,rain,point_09795
+23.7365,92.7146,NASA_GLC,Mizoram,2010-08-06,landslide,downpour,point_09796
+23.7705,92.5217,NASA_GLC,Mizoram,2012-11-11,landslide,downpour,point_09797
+26.9015,88.4719,NASA_GLC,West Bengal,2016-07-21,landslide,rain,point_09798
+26.8836,88.2791,NASA_GLC,Bengal,2009-05-26,landslide,tropical_cyclone,point_09799
+27.0087,88.443,NASA_GLC,West Bengal,2015-06-17,landslide,downpour,point_09800
+27.0678,88.456,NASA_GLC,West Bengal,2015-07-01,landslide,downpour,point_09801
+27.06826,88.28121,NASA_GLC,Bengal,2007-09-05,landslide,rain,point_09802
+26.8352,88.1881,NASA_GLC,West Bengal,2015-07-01,landslide,downpour,point_09803
+26.8992,88.1667,NASA_GLC,Bengal,2009-08-20,landslide,continuous_rain,point_09804
+23.72989,92.71496,NASA_GLC,Mizoram,2010-09-13,landslide,downpour,point_09805
+27.1667,88.35,NASA_GLC,Sikkim,2007-09-09,landslide,rain,point_09806
+27.7344,88.633,NASA_GLC,,2011-08-25,landslide,downpour,point_09807
+27.339,88.6065,NASA_GLC,Sikkim,2012-06-14,landslide,downpour,point_09808
+27.0161,88.2478,NASA_GLC,West Bengal,2015-06-29,landslide,downpour,point_09809
+26.88212,88.31953,NASA_GLC,Bengal,2009-08-16,landslide,downpour,point_09810
+23.4495,92.8112,NASA_GLC,Mizoram,2015-08-28,landslide,downpour,point_09811
+27.6047,88.6463,NASA_GLC,,2013-09-08,rock_fall,rain,point_09812
+26.8096,88.526,NASA_GLC,Bengal,2007-06-15,landslide,rain,point_09813
+27.2676,88.2891,NASA_GLC,Sikkim,2016-10-12,landslide,continuous_rain,point_09814
+26.8342,88.2798,NASA_GLC,Bengal,2009-09-18,landslide,rain,point_09815
+23.7269,92.7265,NASA_GLC,Mizoram,2015-08-27,landslide,downpour,point_09816
+27.0771,88.482,NASA_GLC,Bengal,2008-06-30,landslide,downpour,point_09817
+26.9722,88.4481,NASA_GLC,Bengal,2010-08-19,landslide,downpour,point_09818
+27.04357,88.26522,NASA_GLC,Bengal,2009-05-26,landslide,tropical_cyclone,point_09819
