@@ -37,7 +37,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.api.config import settings
-from src.api.routers import demo, health, predict, reports
+from src.api.routers import alerts, demo, health, predict, reports
 from src.api.services.coordinates_service import coordinates_service
 from src.api.services.demo_service import demo_service
 from src.api.services.field_report_service import field_report_service
@@ -82,6 +82,8 @@ app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(demo.router)
 app.include_router(reports.router)
+app.include_router(alerts.router)
+
 
 # Serves uploaded field-report media at the media_url paths FieldReport
 # returns (e.g. /media/reports/<id>.jpg). check_dir=False avoids a startup
@@ -91,4 +93,11 @@ app.mount(
     "/media/reports",
     StaticFiles(directory=settings.field_reports_media_dir, check_dir=False),
     name="report-media",
+)
+
+# Serves the BhuRakshak web dashboard at root
+app.mount(
+    "/",
+    StaticFiles(directory="web", html=True),
+    name="dashboard",
 )

@@ -38,3 +38,5 @@ uvicorn[standard]>=0.32
 pydantic-settings>=2.5
 
 python-multipart>=0.0.9 #for field level file uploads
+email-validator>=2.0
+python-dotenv>=1.0
