@@ -76,7 +76,33 @@ class SusceptibilityService:
         model.eval()
         self._model = model
 
-    def predict(self, site_id: str) -> tuple[float, str]:
+    def infer_from_window(self, window: np.ndarray) -> tuple[float, str]:
+        """Run the loaded model on an already-fetched window. Shared by the
+        full-dataset predict() below and by the demo service, which fetches
+        its windows from a small in-memory subset instead of scanning the
+        full training CSV.
+        """
+        if self._model is None or self._mean is None or self._std is None:
+            raise ModelNotLoadedError("Model checkpoint is not loaded.")
+
+        normalized = (window - self._mean) / self._std
+        with torch.no_grad():
+            logit = self._model(torch.from_numpy(normalized[None]))
+            probability = float(torch.sigmoid(logit).item())
+
+        return probability, classify_risk(probability)
+
+    def latest_feature_snapshot(self, window: np.ndarray) -> dict[str, float]:
+        """The most recent day's raw (unnormalized) feature values, keyed by
+        feature name — for a dashboard detail panel, not used in inference.
+        """
+        if self._features is None:
+            raise ModelNotLoadedError("Model checkpoint is not loaded.")
+        return dict(zip(self._features, window[-1].tolist()))
+
+    def predict(
+        self, site_id: str, include_features: bool = False
+    ) -> tuple[float, str, dict[str, float] | None]:
         if self._model is None or self._features is None:
             raise ModelNotLoadedError("Model checkpoint is not loaded.")
 
@@ -90,12 +116,9 @@ class SusceptibilityService:
         except ValueError as exc:
             raise SiteNotFoundError(str(exc)) from exc
 
-        window = (window - self._mean) / self._std
-        with torch.no_grad():
-            logit = self._model(torch.from_numpy(window[None]))
-            probability = float(torch.sigmoid(logit).item())
-
-        return probability, classify_risk(probability)
+        probability, risk_class = self.infer_from_window(window)
+        snapshot = self.latest_feature_snapshot(window) if include_features else None
+        return probability, risk_class, snapshot
 
 
 # Singleton used by the routers — loaded once in main.py's startup hook.
