@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BhuRakshak // भू-रक्षक — Northeast India Landslide Susceptibility & Earth Observation Intelligence</title>
+  <meta name="description" content="AI-based Landslide Susceptibility Monitoring System for Northeast India combining Sentinel-1 SAR, Sentinel-2 Optical indicators, and Temporal Transformers for Smart India Hackathon SIH26001.">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Custom Modern Design System -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Header Bar matching Screenshot -->
+    <header class="header-bar">
+      <div class="brand-wrapper">
+        <div class="brand-icon-box" title="BhuRakshak Earth Radar">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+        </div>
+        <div class="brand-details">
+          <div class="brand-title-line">
+            <span class="brand-name">BhuRakshak</span>
+            <span class="brand-hindi">// भू-रक्षक</span>
+            <span class="version-pill">AI v1.2</span>
+          </div>
+          <span class="brand-tagline">Northeast India Landslide Susceptibility &amp; Earth Observation Intelligence</span>
+        </div>
+      </div>
+
+      <!-- Center Omni-Search Bar -->
+      <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="header-search-input" placeholder="Search state, highway corridor, GPS..." aria-label="Search">
+      </div>
+
+      <!-- Right Meta Status Group -->
+      <div class="header-meta-group">
+        <div class="sync-status-pill" id="header-sync-pill">
+          <span class="green-dot"></span>
+          <span>Sentinel-1/2 GEE Sync</span>
+        </div>
+        <div class="sites-count-pill">
+          <span class="sites-num">9,823</span> Sites Surveyed
+        </div>
+        <button class="sound-toggle-btn" id="sound-toggle-btn" title="Toggle Audio Siren Chime">
+          <span>🔔</span> Sound: ON
+        </button>
+        <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Light / Dark Theme">
+          <span id="theme-icon">☀️</span> <span id="theme-label">Light Mode</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs Strip matching Screenshot -->
+    <nav class="tabs-strip" aria-label="Main Modules">
+      <button class="nav-tab-item active" data-tab="map" id="tab-btn-map">
+        <span>🗺️</span> Geospatial Susceptibility Map
+      </button>
+      <button class="nav-tab-item" data-tab="inspector" id="tab-btn-inspector">
+        <span>🧠</span> AI Transformer Predictor
+      </button>
+      <button class="nav-tab-item" data-tab="telemetry" id="tab-btn-telemetry">
+        <span>🛰️</span> Sentinel SAR &amp; Optical Telemetry
+      </button>
+      <button class="nav-tab-item" data-tab="monsoon" id="tab-btn-monsoon">
+        <span>🌧️</span> Monsoon Threat Radar
+      </button>
+      <button class="nav-tab-item" data-tab="inventory" id="tab-btn-inventory">
+        <span>📊</span> Landslide Inventory Catalog
+      </button>
+      <button class="nav-tab-item" data-tab="architecture" id="tab-btn-architecture">
+        <span>🏛️</span> Model Architecture
+      </button>
+      <button class="nav-tab-item" data-tab="alerts" id="tab-btn-alerts" style="border: 1px solid rgba(239,68,68,0.4); color:#fca5a5;">
+        <span>🚨</span> SMS &amp; Email Alerts
+      </button>
+    </nav>
+
+    <!-- 4-Pill Summary Stats Strip (Under Tabs) -->
+    <div class="stats-strip">
+      <div class="stat-pill-card">
+        NASA COOLR • GSI • SMMML merged
+      </div>
+      <div class="stat-pill-card">
+        Precision: <strong>93.8%</strong> • Balanced Acc: <strong>70.1%</strong>
+      </div>
+      <div class="stat-pill-card">
+        Eastern Himalayas &amp; Indo-Burma Ranges
+      </div>
+      <div class="stat-pill-card">
+        SAR (VV/VH) + Optical (NDVI/NDMI) + Staleness
+      </div>
+    </div>
+
+    <!-- Main Viewport -->
+    <main class="main-viewport">
+      
+      <!-- ===================================================================
+           TAB 1: Geospatial Susceptibility Map
+           =================================================================== -->
+      <section class="tab-pane active" id="tab-map">
+        <div style="position:relative; width:100%; height:100%;">
+          
+          <!-- Leaflet Map -->
+          <div id="leaflet-map"></div>
+
+          <!-- Top-Left Box: Regional Filters & Corridors -->
+          <div class="map-regional-panel">
+            <div class="regional-header">
+              <span class="regional-title">
+                <span>🗺️</span> Regional Filters &amp; Corridors
+              </span>
+              <span class="inspect-link" onclick="window.bhuMap.flyTo(26.4006, 92.5376, 7)">Click map to inspect point</span>
+            </div>
+
+            <div class="filter-select-row">
+              <select class="dark-dropdown" id="regional-state-select" aria-label="Filter State">
+                <option value="all">All Northeast States</option>
+                <option value="arunachal_pradesh">Arunachal Pradesh</option>
+                <option value="assam">Assam</option>
+                <option value="manipur">Manipur</option>
+                <option value="meghalaya">Meghalaya</option>
+                <option value="mizoram">Mizoram</option>
+                <option value="nagaland">Nagaland</option>
+                <option value="sikkim">Sikkim</option>
+                <option value="west_bengal">West Bengal (Hills)</option>
+              </select>
+
+              <select class="dark-dropdown" id="regional-risk-select" aria-label="Filter Risk">
+                <option value="all">All Risk Levels</option>
+                <option value="High">High Risk (Critical)</option>
+                <option value="Medium">Medium Risk (Watch)</option>
+                <option value="Low">Low Risk (Stable)</option>
+              </select>
+
+              <select class="dark-dropdown" id="regional-trigger-select" aria-label="Filter Trigger">
+                <option value="all">All Triggers</option>
+                <option value="rain">Continuous Monsoon Rain</option>
+                <option value="cloudburst">Heavy Cloudburst</option>
+                <option value="road_cut">Road Cut / Excavation</option>
+                <option value="pore_pressure">High Pore Pressure</option>
+              </select>
+            </div>
+
+            <div class="quick-corridors-section">
+              <span class="quick-label">Quick Corridors:</span>
+              <button class="quick-corridor-btn" data-corridor="nh29_kohima">
+                <span>🛣️</span> NH-29 Kohima
+              </button>
+              <button class="quick-corridor-btn" data-corridor="nh10_teesta">
+                <span>🛣️</span> NH-10 Teesta
+              </button>
+              <button class="quick-corridor-btn" data-corridor="subansiri_pass">
+                <span>🛣️</span> Subansiri Pass
+              </button>
+            </div>
+          </div>
+
+          <!-- Top-Right Box: Basemaps & Layers Switcher -->
+          <div class="map-layer-panel">
+            <div class="layer-group-title">High-Detail Basemap</div>
+            <label class="layer-item-label">
+              <input type="radio" name="map-basemap" value="topo" checked>
+              <span>🏔️ High-Detail Topo &amp; Roads</span>
+            </label>
+            <label class="layer-item-label">
+              <input type="radio" name="map-basemap" value="osm">
+              <span>🗺️ Detailed Streets (OSM)</span>
+            </label>
+            <label class="layer-item-label">
+              <input type="radio" name="map-basemap" value="satellite">
+              <span>🛰️ Satellite + Highways Hybrid</span>
+            </label>
+            <label class="layer-item-label">
+              <input type="radio" name="map-basemap" value="dark">
+              <span>🌌 Detailed Dark with Road Network</span>
+            </label>
+
+            <div class="divider-line"></div>
+
+
+            <div class="layer-group-title">Active Layers</div>
+            <label class="layer-item-label">
+              <input type="checkbox" id="layer-toggle-susceptible" checked>
+              <span>🔴 Susceptible Landslide Points</span>
+            </label>
+            <label class="layer-item-label">
+              <input type="checkbox" id="layer-toggle-control" checked>
+              <span>🟢 Stable Reference Control Sites</span>
+            </label>
+            <label class="layer-item-label">
+              <input type="checkbox" id="layer-toggle-corridors" checked>
+              <span>🛣️ Critical Highway Corridors</span>
+            </label>
+            <label class="layer-item-label">
+              <input type="checkbox" id="layer-toggle-heatmap" checked>
+              <span>🔥 Susceptibility Heatmap Density</span>
+            </label>
+          </div>
+
+          <!-- Right Floating Side Drawer (Telemetry & Dial Gauge) -->
+          <aside class="map-side-drawer" id="map-side-drawer">
+            <div class="drawer-header">
+              <div class="drawer-title">
+                <span>🛰️</span>
+                <span id="drawer-site-id">sikkim_0812</span>
+              </div>
+              <span class="version-pill" id="drawer-site-region">SIKKIM</span>
+            </div>
+
+            <div class="drawer-body">
+              <!-- Gauge -->
+              <div class="gauge-card">
+                <div class="gauge-svg-container">
+                  <svg class="gauge-svg" width="130" height="130" viewBox="0 0 100 100">
+                    <circle class="gauge-circle-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-circle-val" id="drawer-gauge-circle" cx="50" cy="50" r="40" stroke="var(--risk-high)"/>
+                  </svg>
+                  <div class="gauge-center-text">
+                    <span class="gauge-prob-number" id="drawer-prob-number">91.2%</span>
+                    <span class="gauge-risk-badge badge-high" id="drawer-risk-badge">Critical High</span>
+                  </div>
+                </div>
+                <div style="font-size:0.68rem; color:var(--text-muted); margin-top:6px;">
+                  30-Day Temporal Susceptibility Index
+                </div>
+              </div>
+
+              <!-- Sensor Metrics -->
+              <div>
+                <div style="font-size:0.68rem; font-weight:700; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">
+                  Earth Observation Metrics
+                </div>
+                <div class="telemetry-grid">
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-title">NDVI Root Health</div>
+                    <div class="telemetry-card-val" id="drawer-ndvi-val">0.38</div>
+                    <div class="telemetry-bar-bg"><div class="telemetry-bar-fill" id="drawer-ndvi-bar" style="width:38%;"></div></div>
+                  </div>
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-title">NDMI Saturation</div>
+                    <div class="telemetry-card-val" id="drawer-ndmi-val">0.71</div>
+                    <div class="telemetry-bar-bg"><div class="telemetry-bar-fill" id="drawer-ndmi-bar" style="width:85%; background:var(--risk-high);"></div></div>
+                  </div>
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-title">SAR VV Backscatter</div>
+                    <div class="telemetry-card-val" id="drawer-sar-vv-val">-9.8 dB</div>
+                  </div>
+                  <div class="telemetry-card">
+                    <div class="telemetry-card-title">SAR VH Backscatter</div>
+                    <div class="telemetry-card-val" id="drawer-sar-vh-val">-16.4 dB</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(8,14,28,0.6); padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); font-size:0.72rem;">
+                <span style="color:var(--text-secondary);">Observation Staleness:</span>
+                <span class="font-mono" id="drawer-staleness-val" style="color:var(--cyan-400);">1 day ago</span>
+              </div>
+
+              <div style="display:flex; gap:8px;">
+                <button class="btn-primary" style="flex:1; justify-content:center;" onclick="window.bhuMap.inspectSite(window.bhuMap.activeSiteId)">
+                  Deep Dive &rarr;
+                </button>
+                <button class="btn-primary" style="background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#ef4444;" onclick="window.bhuMap.dispatchAlertForSite(window.bhuMap.activeSiteId)" title="Dispatch SMS/Email">
+                  🚨 Send Alert
+                </button>
+              </div>
+            </div>
+          </aside>
+
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 2: AI Transformer Predictor
+           =================================================================== -->
+      <section class="tab-pane" id="tab-inspector">
+        <div style="padding:20px; width:100%; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:20px;">
+          <div style="display:grid; grid-template-columns: 420px 1fr; gap:20px;">
+            <div class="panel-card">
+              <div class="panel-title">
+                <span>🎯 Site Deep Dive Predictor</span>
+                <span class="version-pill" id="insp-region-badge">NER</span>
+              </div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block; font-size:0.72rem; color:var(--text-muted); font-weight:600; margin-bottom:4px;">SELECT MONITORED SITE</label>
+                <select class="dark-dropdown font-mono" id="inspector-site-select" style="width:100%; padding:8px;"></select>
+              </div>
+
+              <div class="gauge-card" style="margin-bottom:14px;">
+                <div class="gauge-svg-container">
+                  <svg class="gauge-svg" width="140" height="140" viewBox="0 0 100 100">
+                    <circle class="gauge-circle-bg" cx="50" cy="50" r="40"/>
+                    <circle class="gauge-circle-val" id="insp-gauge-circle" cx="50" cy="50" r="40" stroke="var(--risk-high)"/>
+                  </svg>
+                  <div class="gauge-center-text">
+                    <span class="gauge-prob-number" id="insp-gauge-val">84.2%</span>
+                    <span class="gauge-risk-badge badge-high" id="insp-risk-badge">High Risk</span>
+                  </div>
+                </div>
+                <p id="insp-risk-desc" style="font-size:0.75rem; color:var(--text-secondary); margin-top:8px;">
+                  High risk of slope failure under monsoonal infiltration.
+                </p>
+              </div>
+
+              <div class="telemetry-grid" style="margin-bottom:14px;">
+                <div class="telemetry-card">
+                  <div class="telemetry-card-title">NDVI Root Density</div>
+                  <div class="telemetry-card-val" id="insp-ndvi-val">0.430</div>
+                  <div class="telemetry-bar-bg"><div class="telemetry-bar-fill" id="insp-ndvi-bar" style="width:43%;"></div></div>
+                </div>
+                <div class="telemetry-card">
+                  <div class="telemetry-card-title">NDMI Moisture</div>
+                  <div class="telemetry-card-val" id="insp-ndmi-val">0.640</div>
+                  <div class="telemetry-bar-bg"><div class="telemetry-bar-fill" id="insp-ndmi-bar" style="width:75%; background:var(--risk-high);"></div></div>
+                </div>
+                <div class="telemetry-card">
+                  <div class="telemetry-card-title">SAR VV Backscatter</div>
+                  <div class="telemetry-card-val" id="insp-sar-vv-val">-10.5 dB</div>
+                </div>
+                <div class="telemetry-card">
+                  <div class="telemetry-card-title">SAR VH Backscatter</div>
+                  <div class="telemetry-card-val" id="insp-sar-vh-val">-17.2 dB</div>
+                </div>
+              </div>
+
+              <div style="background:rgba(6,182,212,0.06); border-left:3px solid var(--cyan-400); padding:10px; border-radius:0 4px 4px 0; font-size:0.75rem; color:#cbd5e1;" id="insp-interpretation-text">
+                Multi-head cross-attention confirms strong correlation between antecedent 30-day rain and Sentinel-1 SAR decibel drops.
+              </div>
+            </div>
+
+            <!-- Batch Table -->
+            <div class="panel-card" style="display:flex; flex-direction:column;">
+              <div class="panel-title">
+                <span>📊 Regional Susceptibility Matrix</span>
+                <div style="display:flex; gap:8px;">
+                  <button class="btn-primary" id="run-batch-btn">▶ Run Batch</button>
+                  <button class="btn-primary" id="export-batch-csv" style="background:rgba(255,255,255,0.08); border:1px solid var(--border-subtle);">📥 CSV</button>
+                </div>
+              </div>
+              <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:8px;" id="batch-count">
+                20 Sites Evaluated across Eastern Himalayas
+              </div>
+              <div style="flex:1; overflow-y:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.78rem;">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--border-subtle); color:var(--text-muted); text-align:left;">
+                      <th style="padding:6px 10px;">SITE ID</th>
+                      <th style="padding:6px 10px;">REGION</th>
+                      <th style="padding:6px 10px;">PROBABILITY</th>
+                      <th style="padding:6px 10px;">RISK CLASS</th>
+                      <th style="padding:6px 10px;">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody id="batch-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 3: Sentinel SAR & Optical Telemetry
+           =================================================================== -->
+      <section class="tab-pane" id="tab-telemetry">
+        <div style="padding:20px; width:100%; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+          <div class="panel-card">
+            <div class="panel-title">
+              <span>🛰️ Sentinel-1 C-Band SAR &amp; Sentinel-2 MSI Multi-Spectral Telemetry</span>
+              <span class="version-pill">GEE RECEPTOR</span>
+            </div>
+            <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:16px;">
+              Continuous earth observation radar overcomes Northeast India's cloud cover limitations by capturing microwave backscatter returns (VV &amp; VH polarizations) synchronized with optical vegetation/moisture indices.
+            </p>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:14px;">
+              <div class="telemetry-card" style="padding:14px;">
+                <div style="font-size:0.72rem; font-weight:700; color:var(--cyan-400); margin-bottom:4px;">SENTINEL-1 SAR (C-SAR)</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#fff; margin-bottom:6px;">VV / VH Backscatter</div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); line-height:1.4;">
+                  Microwave penetration through cloud canopy. Surface deformation and roughness variations appear as sudden dB dips.
+                </div>
+              </div>
+              <div class="telemetry-card" style="padding:14px;">
+                <div style="font-size:0.72rem; font-weight:700; color:#10b981; margin-bottom:4px;">SENTINEL-2 MSI (OPTICAL)</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#fff; margin-bottom:6px;">NDVI (Vegetation Index)</div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); line-height:1.4;">
+                  Normalized Difference Vegetation Index (B8 - B4) / (B8 + B4) reveals canopy root cohesion on vulnerable slopes.
+                </div>
+              </div>
+              <div class="telemetry-card" style="padding:14px;">
+                <div style="font-size:0.72rem; font-weight:700; color:#f59e0b; margin-bottom:4px;">HYDROLOGICAL SATURATION</div>
+                <div style="font-size:1.1rem; font-weight:700; color:#fff; margin-bottom:6px;">NDMI (Moisture Index)</div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); line-height:1.4;">
+                  Normalized Difference Moisture Index (B8 - B11) / (B8 + B11) detects deep soil water logging prior to shear failure.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 4: Monsoon Threat Radar
+           =================================================================== -->
+      <section class="tab-pane" id="tab-monsoon">
+        <div style="padding:20px; width:100%; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+          <div class="panel-card">
+            <div class="panel-title">
+              <span>🌧️ Monsoon Infiltration &amp; Slope Shear Stress Tracker</span>
+              <span class="badge-risk badge-high">ACTIVE MONSOON</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-top:14px;">
+              <div class="telemetry-card" style="padding:14px;">
+                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">EASTERN HIMALAYA RAIN INDEX</div>
+                <div style="font-size:1.4rem; font-weight:700; color:#ef4444; margin:4px 0;">184 mm / 48h</div>
+                <div style="font-size:0.72rem; color:var(--text-secondary);">Subansiri &amp; Teesta river basins under cloudburst alert.</div>
+              </div>
+              <div class="telemetry-card" style="padding:14px;">
+                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">PORE PRESSURE ACCUMULATION</div>
+                <div style="font-size:1.4rem; font-weight:700; color:#f59e0b; margin:4px 0;">86.4 kPa</div>
+                <div style="font-size:0.72rem; color:var(--text-secondary);">Exceeds critical cohesion threshold in fractured shales.</div>
+              </div>
+              <div class="telemetry-card" style="padding:14px;">
+                <div style="font-size:0.72rem; color:var(--text-muted); font-weight:700;">ROAD CLEARANCE READINESS</div>
+                <div style="font-size:1.4rem; font-weight:700; color:#10b981; margin:4px 0;">BRO Taskforce Alert</div>
+                <div style="font-size:0.72rem; color:var(--text-secondary);">Heavy earthmovers staged at Singtam, Zubza, Kimin.</div>
+              </div>
+            </div>
+          </div>
+          <!-- State‑wise summary panel -->
+          <div class="panel-card" style="margin-top:16px;">
+            <div class="panel-title">
+              <span>📊 State‑wise Monsoon Threat Summary</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="state-summary-table" style="width:100%; border-collapse:collapse; font-size:0.78rem;">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--border-subtle); color:var(--text-muted); text-align:left;">
+                    <th style="padding:6px 10px;">State</th>
+                    <th style="padding:6px 10px;">Rain Index (mm/48h)</th>
+                    <th style="padding:6px 10px;">Pore Pressure (kPa)</th>
+                    <th style="padding:6px 10px;">Road Readiness</th>
+                  </tr>
+                </thead>
+                <tbody id="monsoon-state-summary-body">
+                  <!-- rows injected by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 5: Landslide Inventory Catalog
+           =================================================================== -->
+      <section class="tab-pane" id="tab-inventory">
+        <div style="padding:20px; width:100%; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+          <div class="panel-card">
+            <div class="panel-title">
+              <span>📊 Multi-Source Historical Landslide Inventory Catalog</span>
+              <span class="version-pill">9,823 SITES</span>
+            </div>
+            <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:14px;">
+              Harmonized geospatial crosswalk merging NASA Cooperative Open Online Landslide Repository (COOLR), Geological Survey of India (GSI) regional maps, and SMMML datasets across the 8 Northeast states.
+            </p>
+            <div class="scenarios-grid" id="scenarios-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 6: Model Architecture
+           =================================================================== -->
+      <section class="tab-pane" id="tab-architecture">
+        <div style="padding:20px; width:100%; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:16px;">
+          <div class="panel-card">
+            <div class="panel-title">
+              <span>🏛️ Temporal Transformer Architecture (PyTorch)</span>
+              <span class="version-pill">ROC-AUC: 0.7945</span>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px; margin-top:12px;">
+              <div>
+                <h4 style="font-size:0.85rem; color:#38bdf8; margin-bottom:8px;">Model Design</h4>
+                <ul style="font-size:0.78rem; color:var(--text-secondary); line-height:1.6; padding-left:18px;">
+                  <li>Input Tensor: <code>[batch_size, 30_days, 10_features]</code></li>
+                  <li>Feature Embedding: Linear projection to $d_{model} = 64$</li>
+                  <li>Positional Encoding: Fixed sinusoidal temporal encoding</li>
+                  <li>Transformer Encoder: 2 layers, 4 attention heads</li>
+                  <li>Loss Function: Binary Cross-Entropy with Logits</li>
+                </ul>
+              </div>
+              <div>
+                <h4 style="font-size:0.85rem; color:#10b981; margin-bottom:8px;">Evaluated Validation Metrics</h4>
+                <table style="width:100%; font-size:0.78rem; color:var(--text-secondary);">
+                  <tr><td>ROC-AUC:</td><td style="color:#fff; font-weight:700;">0.7945</td></tr>
+                  <tr><td>Precision (High Risk):</td><td style="color:#fff; font-weight:700;">93.76%</td></tr>
+                  <tr><td>Balanced Accuracy:</td><td style="color:#fff; font-weight:700;">70.12%</td></tr>
+                  <tr><td>F1-Score:</td><td style="color:#fff; font-weight:700;">0.7328</td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TAB 7: SMS & Email Alerts (User Requested)
+           =================================================================== -->
+      <section class="tab-pane" id="tab-alerts">
+        <div class="alerts-layout">
+          
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <h2 class="font-heading" style="font-size:1.25rem;">Automated Emergency SMS &amp; Email Alert Gateway</h2>
+              <p style="font-size:0.78rem; color:var(--text-secondary);">
+                Direct dispatch channel to District Magistrates (DDMA), Border Roads Organisation (BRO), NDRF, and emergency teams.
+              </p>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btn-primary" id="btn-dispatch-alerts" style="background:linear-gradient(135deg,#ef4444,#dc2626); box-shadow:0 4px 14px rgba(239,68,68,0.4);">
+                <span>🚨</span> Dispatch Emergency SMS &amp; Email Alert
+              </button>
+              <button class="btn-primary" id="btn-test-email" style="background:#2563eb; box-shadow:0 4px 14px rgba(37,99,235,0.4);">
+                <span>✉️</span> Test Email Alert
+              </button>
+            </div>
+          </div>
+
+          <div class="alerts-two-col">
+            <!-- Left: Alert Configuration & Subscribers -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <!-- Fast2SMS Gateway Configuration -->
+              <div class="panel-card" style="border: 1px solid rgba(14, 165, 233, 0.4);">
+                <div class="panel-title">
+                  <span>🔑 Fast2SMS API Gateway</span>
+                  <span class="version-pill">LIVE SMS</span>
+                </div>
+                <p style="font-size:0.72rem; color:var(--text-secondary); margin-bottom:8px;">
+                  Enter your Fast2SMS Authorization Key to dispatch real SMS alerts to Indian mobile numbers (+91).
+                </p>
+                <div style="display:flex; gap:8px; margin-bottom:6px;">
+                  <input type="password" class="search-input font-mono" id="fast2sms-api-key-input" placeholder="Paste Fast2SMS Authorization Key here..." style="border-radius:4px; font-size:0.75rem;">
+                  <button class="btn-primary" id="btn-save-fast2sms-key" style="white-space:nowrap; padding:6px 12px;">Save Key</button>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span id="api-key-save-status" style="display:none; font-size:0.72rem; color:var(--risk-low); font-weight:600;">✓ Fast2SMS API Key Saved</span>
+                  <a href="https://www.fast2sms.com/dashboard/dev-api" target="_blank" rel="noopener" style="font-size:0.7rem; color:var(--cyan-400); text-decoration:none;">Fast2SMS Dev Portal &rarr;</a>
+                </div>
+              </div>
+
+              <div class="panel-card">
+                <div class="panel-title">
+                  <span>⚙️ Trigger Configuration</span>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                  <label style="display:block; font-size:0.72rem; color:var(--text-muted); font-weight:600; margin-bottom:4px;">TARGET HAZARD CORRIDOR</label>
+                  <select class="dark-dropdown font-mono" id="alert-site-select" style="width:100%; padding:8px;"></select>
+                </div>
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-secondary); margin-bottom:4px;">
+                    <span>SUSCEPTIBILITY TRIGGER THRESHOLD</span>
+                    <strong id="alert-threshold-val" style="color:var(--cyan-400);">70%</strong>
+                  </div>
+                  <input type="range" class="prob-slider" id="alert-threshold-slider" min="30" max="95" value="70" style="width:100%;">
+                </div>
+              </div>
+
+              <!-- SMS Subscribers -->
+              <div class="panel-card">
+                <div class="panel-title">
+                  <span>📱 SMS Emergency Numbers (+91)</span>
+                  <button class="btn-primary" id="btn-add-sms" style="padding:3px 8px; font-size:0.7rem;">+ Add Mobile</button>
+                </div>
+                <div id="sms-recipients-list"></div>
+              </div>
+
+              <!-- Email Subscribers -->
+              <div class="panel-card">
+                <div class="panel-title">
+                  <span>📧 Official Email Recipients</span>
+                  <button class="btn-primary" id="btn-add-email" style="padding:3px 8px; font-size:0.7rem;">+ Add Email</button>
+                </div>
+                <div id="email-recipients-list"></div>
+              </div>
+            </div>
+
+            <!-- Right: Previews & Dispatch History -->
+            <div style="display:flex; flex-direction:column; gap:16px;">
+              <!-- Live Previews -->
+              <div class="panel-card">
+                <div class="panel-title">
+                  <span>📱 Live SMS Preview</span>
+                  <span class="font-mono" id="sms-char-counter" style="font-size:0.7rem; color:var(--text-muted);">158 chars</span>
+                </div>
+                <div style="background:rgba(8,14,28,0.8); border:1px solid rgba(56,189,248,0.2); border-radius:var(--radius-sm); padding:12px; font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:#38bdf8; line-height:1.45;" id="sms-preview-text">
+                  🚨 BHURAKSHAK ALERT: High Landslide Susceptibility...
+                </div>
+              </div>
+
+              <div class="panel-card">
+                <div class="panel-title">
+                  <span>📧 Official HTML Email Preview</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:6px;">
+                  Subject: <strong id="email-preview-subject" style="color:#fff;">⚠️ CRITICAL HAZARD ADVISORY...</strong>
+                </div>
+                <div id="email-preview-body" style="background:#070b14; border-radius:var(--radius-sm); padding:10px; max-height:200px; overflow-y:auto;"></div>
+              </div>
+
+              <!-- Dispatch Log -->
+              <div class="panel-card" style="flex:1;">
+                <div class="panel-title">
+                  <span>📋 Recent Dispatched Alerts Log</span>
+                </div>
+                <div id="alert-logs-container"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- BhuRakshak Core Modules -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/inspector.js"></script>
+  <script src="js/demo.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/advisories.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

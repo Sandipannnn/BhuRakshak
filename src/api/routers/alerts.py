@@ -6,6 +6,7 @@ from email.message import EmailMessage
 import re
 import urllib.request
 import json
+import time
 from pathlib import Path
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException
@@ -179,11 +180,10 @@ def send_email_alert(payload: EmailAlertRequest) -> EmailAlertResponse:
 @router.post("/sms", response_model=SMSAlertResponse)
 def send_fast2sms_alert(payload: SMSAlertRequest) -> SMSAlertResponse:
     key = (payload.api_key or os.environ.get("FAST2SMS_API_KEY", "")).strip()
+    demo_mode = False
     if not key:
-        raise HTTPException(
-            status_code=400,
-            detail="Fast2SMS API Key not provided. Please enter your API key in the UI or set FAST2SMS_API_KEY environment variable."
-        )
+        print("[WARN] No Fast2SMS API Key provided. Running SMS alert in DEMO mode.")
+        demo_mode = True
     # If no numbers supplied, fall back to stored phone book
     if not payload.numbers:
         stored_numbers = load_phone_book()
@@ -208,6 +208,16 @@ def send_fast2sms_alert(payload: SMSAlertRequest) -> SMSAlertResponse:
         if payload.weather:
             parts.append(f"Weather: {payload.weather}")
         payload.message = " | ".join(parts)
+    if demo_mode:
+        print(f"\n[DEMO SMS] To: {phone_str}\nMessage: {payload.message}\n")
+        return SMSAlertResponse(
+            success=True,
+            message="[DEMO] SMS simulated successfully.",
+            request_id=f"demo_{int(time.time())}",
+            recipients_count=len(phone_str.split(",")),
+            raw_response={"status": "mocked"}
+        )
+
     # Fast2SMS bulkV2 Quick SMS payload
     fast2sms_url = "https://www.fast2sms.com/dev/bulkV2"
     post_data = json.dumps({
