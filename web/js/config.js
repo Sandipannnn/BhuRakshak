@@ -4,12 +4,24 @@
  */
 
 const CONFIG = {
-  // API base URL
-  API_BASE_URL: window.location.port === "8000" 
-    ? "" 
-    : (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-      ? "http://127.0.0.1:8000"
-      : "",
+  // API base URL: Points to local backend when developing, and Render in production
+  API_BASE_URL: (function() {
+    // Allow overriding backend URL via localStorage in the browser console:
+    // localStorage.setItem("bhurakshak_backend_url", "https://your-backend.onrender.com")
+    const customUrl = localStorage.getItem("bhurakshak_backend_url");
+    if (customUrl) return customUrl.replace(/\/+$/, "");
+
+    // If served directly by FastAPI on port 8000
+    if (window.location.port === "8000") return "";
+
+    // If running on localhost / 127.0.0.1 (e.g. Vite or VS Code Live Server)
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return "http://127.0.0.1:8000";
+    }
+
+    // Production URL: Replace with your deployed Render service URL
+    return "https://bhurakshak.onrender.com";
+  })(),
 
   HEALTH_CHECK_INTERVAL: 15000,
 
