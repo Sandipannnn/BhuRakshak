@@ -20,7 +20,7 @@ const CONFIG = {
     }
 
     // Production URL: Replace with your deployed Render service URL
-    return "https://bhurakshak-ydpe.onrender.com";
+    return "https://bhurakshak-ydpe.onrender.com/";
   })(),
 
   HEALTH_CHECK_INTERVAL: 15000,
