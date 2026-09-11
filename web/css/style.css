@@ -560,7 +560,8 @@ html, body {
   top: 14px;
   left: 14px;
   z-index: 900;
-  width: 320px;
+  width: 440px;
+  max-width: calc(100vw - 28px);
   background: var(--bg-card);
   backdrop-filter: var(--backdrop-blur);
   border: 1px solid rgba(56, 189, 248, 0.25);
@@ -600,10 +601,12 @@ html, body {
   display: flex;
   gap: 6px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .dark-dropdown {
-  flex: 1;
+  flex: 1 1 120px;
+  min-width: 0;
   background: var(--bg-input);
   color: var(--text-primary);
   border: 1px solid rgba(56, 189, 248, 0.2);
