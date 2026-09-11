@@ -501,7 +501,7 @@ def send_fast2sms_alert(
     # --------------------------------------------------------
 
     api_key = os.getenv(
-        "FAST2SMS_API_KEY",
+        "qRehVmownjt02T3vMuKEWUH5l4Os6D7ci1AkzP8NCxYFBbQyfIpnZryDboJGmL9Vf40XkPHR1eO8dvW3",
         ""
     ).strip()
 
