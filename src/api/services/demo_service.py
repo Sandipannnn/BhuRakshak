@@ -49,7 +49,7 @@ class DemoSusceptibilityService:
             # /demo/sites will just report an empty list.
             return
 
-        df = pd.read_csv(csv_path, parse_dates=["date"])
+        df = pd.read_csv(csv_path, parse_dates=["date"], low_memory=False)
         windows: dict[str, np.ndarray] = {}
         for site_id, group in df.groupby("site_id"):
             group = group.sort_values("date")

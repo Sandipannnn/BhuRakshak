@@ -45,7 +45,46 @@ SITE_IDS: list[str] = [
     "sikkim_0812",
     "sikkim_1582",
     "west bengal_0691",
-    "west bengal_2429"
+    "west bengal_2429",
+     "arunachal pradesh_5474",
+    "negative_manipur_1067",
+    "west bengal_1147",
+    "meghalaya_6588",
+    "manipur_4040",
+    "negative_meghalaya_1455",
+    "negative_west_bengal_0438",
+    "sikkim_1851",
+    "negative_sikkim_1639",
+    "nagaland_4789",
+    "negative_arunachal_pradesh_1216",
+    "assam_6808",
+    "tripura_8529",
+    "negative_west_bengal_0356",
+    "mizoram_8632",
+    "negative_tripura_1898",
+    "negative_tripura_1888",
+    "tripura_8546",
+    "mizoram_7655",
+    "negative_manipur_0959",
+    "negative_meghalaya_1548",
+    "meghalaya_6716",
+    "negative_sikkim_1621",
+    "arunachal_pradesh_0001",
+    "nagaland_5134",
+    "arunachal_pradesh_0017",
+    "negative_assam_1749",
+    "negative_arunachal_pradesh_1217",
+    "negative_mizoram_0281",
+    "arunachal pradesh_2767",
+    "negative_nagaland_0770",
+    "negative_assam_1714",
+    "sikkim_1644",
+    "negative_mizoram_0334",
+    "west bengal_1430",
+    "negative_nagaland_0881",
+    "assam_6786",
+    "manipur_4185",
+    
 ]
 
 
@@ -53,7 +92,7 @@ def main() -> None:
     if not SITE_IDS:
         raise SystemExit(
             "SITE_IDS is empty — edit scripts/build_demo_subset.py and add "
-            "the 10-20 site_ids you want available in the demo."
+            "the site_ids you want available in the demo."
         )
 
     chunks: list[pd.DataFrame] = []
