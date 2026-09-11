@@ -1,6 +1,3 @@
 {
-  "version": 2,
-  "public": true,
-  "cleanUrls": true,
-  "outputDirectory": "web"
+  "cleanUrls": true
 }
