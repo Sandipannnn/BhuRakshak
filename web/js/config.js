@@ -11,12 +11,17 @@ const CONFIG = {
     const customUrl = localStorage.getItem("bhurakshak_backend_url");
     if (customUrl) return customUrl.replace(/\/+$/, "");
 
-    // If served directly by FastAPI on port 8000
-    if (window.location.port === "8000") return "";
+    // Open the static web/index.html file directly from disk in VS Code.
+    if (window.location.protocol === "file:") {
+      return "http://127.0.0.1:8001";
+    }
+
+    // If served directly by FastAPI on a local dev port.
+    if (window.location.port === "8000" || window.location.port === "8001") return "";
 
     // If running on localhost / 127.0.0.1 (e.g. Vite or VS Code Live Server)
     if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return "http://127.0.0.1:8000";
+      return "http://127.0.0.1:8001";
     }
 
     // Production URL: Replace with your deployed Render service URL

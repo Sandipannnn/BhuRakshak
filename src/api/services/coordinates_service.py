@@ -32,6 +32,12 @@ class CoordinatesService:
     def get(self, site_id: str) -> tuple[float, float] | None:
         return self._coords.get(site_id)
 
+    def get(self, site_id: str) -> tuple[float, float] | None:
+        return self._coords.get(site_id)
+
+    def all_items(self) -> dict[str, tuple[float, float]]:
+        return dict(self._coords)
+
 
 # Singleton, loaded once in main.py's startup hook.
 coordinates_service = CoordinatesService()

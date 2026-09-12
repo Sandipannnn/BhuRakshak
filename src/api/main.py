@@ -10,13 +10,6 @@ Then check:
     POST http://127.0.0.1:8000/predict/geojson    {"site_ids": ["..."]}
     GET  http://127.0.0.1:8000/docs              (interactive Swagger UI)
 
-Demo mode — fast, in-memory predictions over a small fixed site subset
-(build it once with scripts/build_demo_subset.py):
-    GET  http://127.0.0.1:8000/demo/sites
-    GET  http://127.0.0.1:8000/demo/predict/{site_id}
-    POST http://127.0.0.1:8000/demo/predict/batch
-    POST http://127.0.0.1:8000/demo/predict/by-risk/{risk_class}
-    GET  http://127.0.0.1:8000/demo/geojson       (all demo sites at once)
 
 Field reports — geo-tagged photo/video from the field app (no model):
     POST http://127.0.0.1:8000/reports            (multipart form: latitude,
@@ -37,30 +30,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.api.config import settings
-from src.api.routers import alerts, demo, health, predict, reports
-from src.api.services.coordinates_service import coordinates_service
-from src.api.services.demo_service import demo_service
+from src.api.routers import alerts, health, predict, reports
 from src.api.services.field_report_service import field_report_service
 from src.api.services.model_service import service
+from src.api.services.coordinates_service import coordinates_service
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     service.load()  # no-op (logs nothing, just skips) if checkpoint is missing
-    if service.is_loaded:
-        # Demo subset reuses the same trained model/features — only load it
-        # once the main model is ready.
-        demo_service.load(
-            settings.demo_dataset_path,
-            features=service.features,
-            window_size=settings.demo_window_size,
-        )
     coordinates_service.load(settings.site_coordinates_path)
     field_report_service.load(
         settings.field_reports_media_dir,
         settings.field_reports_log_path,
         settings.field_reports_max_bytes,
     )
+    # Pre-warm the window cache in a background thread so the API is
+    # responsive immediately (/health works) while the heavy 5.7 GB CSV
+    # scan happens once in the background instead of on every request.
+    if service.is_loaded and coordinates_service.is_loaded:
+        all_site_ids = list(coordinates_service.all_items().keys())
+        service.warm_cache_async(all_site_ids)
     yield
 
 
@@ -80,7 +70,6 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(predict.router)
-app.include_router(demo.router)
 app.include_router(reports.router)
 app.include_router(alerts.router)
 

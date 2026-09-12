@@ -18,6 +18,8 @@ from src.api.services.model_service import (
     service,
 )
 from src.api.services.region import infer_region
+from src.api.services.coordinates_service import coordinates_service
+
 
 router = APIRouter(prefix="/predict", tags=["predict"])
 
@@ -29,31 +31,48 @@ def _predict_many(
     immediately if the model isn't loaded; collects per-site failures into
     `errors` instead of failing the whole request, since callers (dashboard
     heatmap/filter) still want the sites that do resolve.
-    """
-    results: list[SusceptibilityResponse] = []
-    errors: dict[str, str] = {}
 
-    for site_id in site_ids:
-        try:
-            probability, risk_class, snapshot = service.predict(
-                site_id, include_features=include_features
-            )
-        except ModelNotLoadedError as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
-        except SiteNotFoundError as exc:
-            errors[site_id] = str(exc)
-            continue
+    The fast path uses a one-pass window loader in the model service to avoid
+    re-scanning the entire training dataset for every site in the same batch.
+    """
+    try:
+        raw_results, errors = service.predict_many(
+            site_ids, include_features=include_features
+        )
+    except ModelNotLoadedError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except SiteNotFoundError as exc:
+        # Keep the old private error shape stable for a missing site list.
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    results: list[SusceptibilityResponse] = []
+    for item in raw_results:
         results.append(
             SusceptibilityResponse(
-                site_id=site_id,
-                susceptibility_probability=round(probability, 6),
-                risk_class=risk_class,
-                region=infer_region(site_id),
-                feature_snapshot=snapshot,
+                site_id=item["site_id"],
+                susceptibility_probability=item["susceptibility_probability"],
+                risk_class=item["risk_class"],
+                region=infer_region(item["site_id"]),
+                feature_snapshot=item["feature_snapshot"],
             )
         )
 
     return results, errors
+
+
+# Must be registered BEFORE /{site_id} — FastAPI matches routes in
+# registration order, so a dynamic path segment declared first will
+# swallow literal-looking paths like "sites" as if they were a site_id.
+@router.get("/sites")
+def list_sites() -> list[dict]:
+    """All known real site_ids with coordinates, for the frontend to fetch
+    once and filter client-side by map viewport before calling /batch or
+    /geojson with just the visible subset.
+    """
+    return [
+        {"site_id": site_id, "lat": lat, "lon": lon}
+        for site_id, (lat, lon) in coordinates_service.all_items().items()
+    ]
 
 
 @router.get("/{site_id}", response_model=SusceptibilityResponse)

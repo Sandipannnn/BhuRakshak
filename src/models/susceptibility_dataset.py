@@ -71,6 +71,61 @@ def load_site_windows(
     return np.stack(windows), np.asarray(labels, dtype=np.float32), selected
 
 
+def load_latest_site_windows(
+    csv_path: str | Path,
+    site_ids: list[str],
+    window_size: int = 30,
+    features: list[str] | None = None,
+    chunksize: int = 250_000,
+) -> dict[str, np.ndarray]:
+    """Load the latest trailing window for each requested site using one
+    pass over the processed training CSV, sharing the expensive scan across
+    the whole requested site list instead of re-scanning once per site.
+
+    This keeps the file-scanner in a single pass but groups the matching
+    rows by `site_id` within each chunk so the requested IDs are not
+    repeatedly filtered with the same dataframe slice in a nested loop.
+    """
+    path = Path(csv_path)
+    selected = features or DEFAULT_FEATURES
+    required = {"site_id", "date", *selected}
+    header = pd.read_csv(path, nrows=0)
+    missing = required.difference(header.columns)
+    if missing:
+        raise ValueError(f"Missing columns in {path}: {sorted(missing)}")
+
+    wanted = set(site_ids)
+    frames = {site_id: [] for site_id in wanted}
+
+    for chunk in pd.read_csv(
+        path,
+        usecols=sorted(required),
+        parse_dates=["date"],
+        chunksize=chunksize,
+        low_memory=False,
+    ):
+        match = chunk[chunk["site_id"].isin(wanted)]
+        if match.empty:
+            continue
+
+        for site_id, site_chunk in match.groupby("site_id", sort=False):
+            if site_id in frames:
+                frames[site_id].append(site_chunk)
+
+    windows: dict[str, np.ndarray] = {}
+    for site_id in site_ids:
+        pieces = frames.get(site_id, [])
+        if not pieces:
+            continue
+        site_df = pd.concat(pieces, ignore_index=True).sort_values("date")
+        if len(site_df) < window_size:
+            continue
+        values = site_df[selected].tail(window_size).to_numpy(dtype=np.float32)
+        windows[site_id] = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
+
+    return windows
+
+
 def load_latest_site_window(
     csv_path: str | Path,
     site_id: str,

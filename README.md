@@ -269,7 +269,8 @@ _Weather features are not included in the current trained checkpoint since the f
 - [x] Prediction API (full dataset + fast demo mode)
 - [x] GeoJSON heatmap feed with dashboard filters
 - [x] Field reporting (geo-tagged photo/video)
-- [x] Dashboard frontend (in progress — pending merge)
+- [x] Dashboard frontend (with continuous WebGL heatmap)
+- [x] Background cache warming for seamless startup and high-availability endpoints
 - [ ] Multilingual SMS/app early-warning alert generation
 - [ ] Time-to-event early-warning model (pending dated event records overlapping the satellite window)
 - [ ] Offline sync for low-network areas
