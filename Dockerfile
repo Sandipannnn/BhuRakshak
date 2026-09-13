@@ -28,7 +28,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY data/ ./data/
 COPY artifacts/ ./artifacts/
-COPY scripts/ ./scripts/
 COPY web/ ./web/
 
 # Expose the default port (Render will inject $PORT)
