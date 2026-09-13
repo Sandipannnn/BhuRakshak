@@ -24,8 +24,8 @@ const CONFIG = {
       return "http://127.0.0.1:8001";
     }
 
-    // Production URL: Replace with your deployed Render service URL
-    return "https://bhurakshak-ydpe.onrender.com/";
+    // Production URL: Use relative path if the backend serves the frontend
+    return "";
   })(),
 
   HEALTH_CHECK_INTERVAL: 15000,
