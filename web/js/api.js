@@ -1,29 +1,29 @@
 /**
  * BhuRakshak API Client
- * Connects to FastAPI backend (/health, /predict, /reports) using real
- * trained-model predictions only. No demo/simulation fallback — if the
- * backend is offline, calls fail explicitly so the UI can show that state
- * rather than silently rendering fake data.
+ * Connects to FastAPI backend (/health, /predict, /reports).
+ * If the backend is offline (e.g. when deployed to Vercel without a backend),
+ * it elegantly falls back to rendering the CONFIG.DEMO_SCENARIOS data
+ * so the dashboard remains functional for demonstrations.
  */
 
 class BhuRakshakAPI {
   async _fetchWithTimeout(url, options = {}, timeout = 30000) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        console.warn(`Request timed out after ${timeout} ms`);
-        reject(new Error(`Request timed out after ${timeout} ms`));
-      }, timeout);
-
-      fetch(url, options)
-        .then(res => {
-          clearTimeout(timer);
-          resolve(res);
-        })
-        .catch(err => {
-          clearTimeout(timer);
-          reject(err);
-        });
-    });
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
+    } catch (error) {
+      clearTimeout(id);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timed out after ${timeout} ms`);
+      }
+      throw error;
+    }
   }
 
   constructor() {
@@ -61,7 +61,7 @@ class BhuRakshakAPI {
 
     this.isBackendOnline = false;
     this.modelLoaded = false;
-    return { online: false, status: "offline", modelLoaded: false, features: [] };
+    return { online: false, status: "demo_mode", modelLoaded: true, features: ["ndvi", "ndmi", "sar_vv", "sar_vh", "lat", "lon", "staleness"] };
   }
 
   /**
@@ -79,9 +79,17 @@ class BhuRakshakAPI {
         return this.allSites;
       }
     } catch (e) {
-      console.error("Failed to load site list from /predict/sites:", e);
+      console.warn("Failed to load site list from /predict/sites, falling back to demo mode:", e);
     }
-    return [];
+    
+    // Fallback to Demo Scenarios
+    this.allSites = CONFIG.DEMO_SCENARIOS.map(s => ({
+      site_id: s.siteId,
+      lat: s.lat,
+      lon: s.lon
+    }));
+    this.allSitesLoaded = true;
+    return this.allSites;
   }
 
   /**
@@ -106,34 +114,74 @@ class BhuRakshakAPI {
 
     const { minProbability, riskClasses, regions, includeFeatures = true } = filters;
     const combined = { type: "FeatureCollection", features: [], errors: {} };
-    const siteChunks = [];
 
-    for (let i = 0; i < siteIds.length; i += 500) {
-      siteChunks.push(siteIds.slice(i, i + 500));
+    if (this.isBackendOnline) {
+      try {
+        const siteChunks = [];
+        for (let i = 0; i < siteIds.length; i += 500) {
+          siteChunks.push(siteIds.slice(i, i + 500));
+        }
+
+        for (const chunk of siteChunks) {
+          const payload = {
+            site_ids: chunk,
+            include_features: includeFeatures,
+            min_probability: minProbability,
+            risk_classes: riskClasses,
+            regions: regions && !regions.includes("all") ? regions : undefined
+          };
+
+          const res = await this._fetchWithTimeout(`${this.baseUrl}/predict/geojson`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }, 30000);
+
+          if (!res.ok) {
+            throw new Error(`predict/geojson failed: ${res.status}`);
+          }
+
+          const data = await res.json();
+          combined.features.push(...(data.features || []));
+          if (data.errors) Object.assign(combined.errors, data.errors);
+        }
+        return combined;
+      } catch (e) {
+        console.warn("Backend getGeoJSON failed, falling back to demo data.", e);
+      }
     }
 
-    for (const chunk of siteChunks) {
-      const payload = {
-        site_ids: chunk,
-        include_features: includeFeatures,
-        min_probability: minProbability,
-        risk_classes: riskClasses,
-        regions: regions && !regions.includes("all") ? regions : undefined
-      };
-
-      const res = await this._fetchWithTimeout(`${this.baseUrl}/predict/geojson`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }, 30000);
-
-      if (!res.ok) {
-        throw new Error(`predict/geojson failed: ${res.status}`);
+    // Fallback to Demo Data
+    for (const sid of siteIds) {
+      const demo = CONFIG.DEMO_SCENARIOS.find(s => s.siteId === sid);
+      if (demo) {
+        if (minProbability !== undefined && demo.probability < minProbability) continue;
+        if (riskClasses && riskClasses.length > 0 && !riskClasses.includes(demo.risk)) continue;
+        if (regions && regions.length > 0 && !regions.includes("all")) {
+          const normRegion = demo.region.toLowerCase().replace(/ /g, "_");
+          const match = regions.some(r => r === normRegion || sid.startsWith(r));
+          if (!match) continue;
+        }
+        
+        combined.features.push({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [demo.lon, demo.lat] },
+          properties: {
+             site_id: demo.siteId,
+             probability: demo.probability,
+             risk_class: demo.risk,
+             features: includeFeatures ? {
+                ndvi: demo.ndvi,
+                ndmi: demo.ndmi,
+                sar_vv: demo.sar_vv,
+                sar_vh: demo.sar_vh,
+                staleness: demo.staleness
+             } : null
+          }
+        });
+      } else {
+        combined.errors[sid] = "Not found in demo data";
       }
-
-      const data = await res.json();
-      combined.features.push(...(data.features || []));
-      if (data.errors) Object.assign(combined.errors, data.errors);
     }
 
     return combined;
@@ -143,13 +191,36 @@ class BhuRakshakAPI {
    * Predict susceptibility for a single real site.
    */
   async predictSite(siteId, includeFeatures = true) {
-    const res = await this._fetchWithTimeout(
-      `${this.baseUrl}/predict/${encodeURIComponent(siteId)}?include_features=${includeFeatures}`,
-      {},
-      20000,
-    );
-    if (!res.ok) throw new Error(`predict/${siteId} failed: ${res.status}`);
-    return await res.json();
+    if (this.isBackendOnline) {
+      try {
+        const res = await this._fetchWithTimeout(
+          `${this.baseUrl}/predict/${encodeURIComponent(siteId)}?include_features=${includeFeatures}`,
+          {},
+          20000,
+        );
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.warn(`Backend predictSite failed for ${siteId}, falling back to demo data.`);
+      }
+    }
+    
+    // Fallback to Demo Data
+    const demo = CONFIG.DEMO_SCENARIOS.find(s => s.siteId === siteId);
+    if (demo) {
+      return {
+        site_id: demo.siteId,
+        probability: demo.probability,
+        risk_class: demo.risk,
+        features: includeFeatures ? {
+          ndvi: demo.ndvi,
+          ndmi: demo.ndmi,
+          sar_vv: demo.sar_vv,
+          sar_vh: demo.sar_vh,
+          staleness: demo.staleness
+        } : null
+      };
+    }
+    throw new Error("Site not found");
   }
 
   /**
@@ -163,34 +234,69 @@ class BhuRakshakAPI {
     }
 
     const combined = { results: [], errors: {} };
-    const siteChunks = [];
+    if (this.isBackendOnline) {
+      try {
+        const siteChunks = [];
+        for (let i = 0; i < siteIds.length; i += 500) {
+          siteChunks.push(siteIds.slice(i, i + 500));
+        }
 
-    for (let i = 0; i < siteIds.length; i += 500) {
-      siteChunks.push(siteIds.slice(i, i + 500));
-    }
+        for (const chunk of siteChunks) {
+          const payload = {
+            site_ids: chunk,
+            include_features: filters.includeFeatures ?? true,
+            min_probability: filters.minProbability,
+            risk_classes: filters.riskClasses,
+            regions: filters.regions && !filters.regions.includes("all") ? filters.regions : undefined
+          };
 
-    for (const chunk of siteChunks) {
-      const payload = {
-        site_ids: chunk,
-        include_features: filters.includeFeatures ?? true,
-        min_probability: filters.minProbability,
-        risk_classes: filters.riskClasses,
-        regions: filters.regions && !filters.regions.includes("all") ? filters.regions : undefined
-      };
+          const res = await this._fetchWithTimeout(`${this.baseUrl}/predict/batch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }, 30000);
 
-      const res = await this._fetchWithTimeout(`${this.baseUrl}/predict/batch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }, 30000);
+          if (!res.ok) {
+            throw new Error(`predict/batch failed: ${res.status}`);
+          }
 
-      if (!res.ok) {
-        throw new Error(`predict/batch failed: ${res.status}`);
+          const data = await res.json();
+          combined.results.push(...(data.results || []));
+          if (data.errors) Object.assign(combined.errors, data.errors);
+        }
+        return combined;
+      } catch (e) {
+        console.warn("Backend predictBatch failed, falling back to demo data.");
       }
-
-      const data = await res.json();
-      combined.results.push(...(data.results || []));
-      if (data.errors) Object.assign(combined.errors, data.errors);
+    }
+    
+    // Fallback to Demo Data
+    for (const sid of siteIds) {
+      const demo = CONFIG.DEMO_SCENARIOS.find(s => s.siteId === sid);
+      if (demo) {
+        if (filters.minProbability !== undefined && demo.probability < filters.minProbability) continue;
+        if (filters.riskClasses && filters.riskClasses.length > 0 && !filters.riskClasses.includes(demo.risk)) continue;
+        if (filters.regions && filters.regions.length > 0 && !filters.regions.includes("all")) {
+          const normRegion = demo.region.toLowerCase().replace(/ /g, "_");
+          const match = filters.regions.some(r => r === normRegion || sid.startsWith(r));
+          if (!match) continue;
+        }
+        
+        combined.results.push({
+           site_id: demo.siteId,
+           probability: demo.probability,
+           risk_class: demo.risk,
+           features: filters.includeFeatures !== false ? {
+              ndvi: demo.ndvi,
+              ndmi: demo.ndmi,
+              sar_vv: demo.sar_vv,
+              sar_vh: demo.sar_vh,
+              staleness: demo.staleness
+           } : null
+        });
+      } else {
+        combined.errors[sid] = "Not found in demo data";
+      }
     }
 
     return combined;

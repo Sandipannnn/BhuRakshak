@@ -161,7 +161,11 @@ class BhuRakshakApp {
     if (health.online) {
       syncPill.innerHTML = `<span class="green-dot"></span> Sentinel-1/2 GEE Sync`;
     } else {
-      syncPill.innerHTML = `<span class="green-dot" style="background:#ef4444; box-shadow:0 0 8px #ef4444;"></span> Backend Offline`;
+      if (health.status === "demo_mode") {
+        syncPill.innerHTML = `<span class="green-dot" style="background:#f59e0b; box-shadow:0 0 8px #f59e0b;"></span> Demo Mode (Offline)`;
+      } else {
+        syncPill.innerHTML = `<span class="green-dot" style="background:#ef4444; box-shadow:0 0 8px #ef4444;"></span> Backend Offline`;
+      }
     }
   }
 }
